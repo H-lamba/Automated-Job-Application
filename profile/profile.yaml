@@ -1,0 +1,452 @@
+# ============================================================
+# Career Agent — User Profile
+# ============================================================
+
+# version: "1.0"
+
+# ============================================================
+# Personal Information
+# ============================================================
+
+personal:
+  first_name: "Himanshu"
+  last_name: "Lamba"
+  name: "Himanshu Lamba"
+
+  email: "hlamba24191@gmail.com"
+  phone: "+91-7891280266"
+
+  location:
+    city: "Delhi"
+    state: "Delhi"
+    country: "India"
+
+  linkedin: "https://www.linkedin.com/in/himanshu-50385730a/"
+  github: "https://github.com/H-lamba"
+
+  portfolio: ""
+
+  website: ""
+
+# ============================================================
+# Professional Summary
+# ============================================================
+
+summary: |
+  AI Engineer and Computer Science undergraduate specializing in Artificial Intelligence
+  and Machine Learning with practical experience building production-ready LLM applications,
+  Retrieval-Augmented Generation (RAG) systems, AI Agents, semantic search engines,
+  and scalable backend services. Strong foundation in Python, FastAPI, Machine Learning,
+  Deep Learning, and modern AI infrastructure. Seeking Software Development Engineer,
+  AI Engineer, Backend Engineer, and Machine Learning roles where I can build impactful,
+  large-scale intelligent systems.
+
+# ============================================================
+# Job Preferences
+# ============================================================
+
+preferences:
+
+  target_roles:
+
+    - "Software Development Engineer"
+    - "Software Engineer"
+    - "Backend Engineer"
+    - "Backend Software Engineer"
+    - "Python Developer"
+
+    - "AI Engineer"
+    - "Machine Learning Engineer"
+    - "Generative AI Engineer"
+    - "LLM Engineer"
+    - "Applied AI Engineer"
+    - "Research Engineer"
+
+  industries:
+
+    - "Artificial Intelligence"
+    - "Machine Learning"
+    - "Enterprise Software"
+    - "Developer Tools"
+    - "Cloud Computing"
+    - "Infrastructure"
+    - "FinTech"
+    - "SaaS"
+    - "Cybersecurity"
+
+  desired_salary_min: 1500000
+  desired_salary_max: 3500000
+  salary_currency: "INR"
+
+  remote: "no_preference"
+
+  locations_ok:
+
+    - "Remote"
+    - "Delhi NCR"
+    - "Bengaluru"
+    - "Hyderabad"
+    - "Pune"
+    - "Chennai"
+    - "Mumbai"
+    - "Noida"
+    - "Gurugram"
+
+  willing_to_relocate: true
+
+# ============================================================
+# Skills
+# ============================================================
+
+skills:
+
+  technical:
+
+    - name: "Python"
+      proficiency: expert
+
+    - name: "C++"
+      proficiency: advanced
+
+    - name: "SQL"
+      proficiency: advanced
+
+    - name: "FastAPI"
+      proficiency: advanced
+
+    - name: "Git"
+      proficiency: advanced
+
+    - name: "GitHub"
+      proficiency: advanced
+
+    - name: "Linux"
+      proficiency: intermediate
+
+    - name: "Docker"
+      proficiency: intermediate
+
+    - name: "Machine Learning"
+      proficiency: advanced
+
+    - name: "Deep Learning"
+      proficiency: advanced
+
+    - name: "Natural Language Processing"
+      proficiency: advanced
+
+    - name: "Generative AI"
+      proficiency: advanced
+
+    - name: "Large Language Models"
+      proficiency: advanced
+
+    - name: "Prompt Engineering"
+      proficiency: advanced
+
+    - name: "Retrieval-Augmented Generation"
+      proficiency: advanced
+
+    - name: "AI Agents"
+      proficiency: advanced
+
+    - name: "PyTorch"
+      proficiency: advanced
+
+    - name: "TensorFlow"
+      proficiency: advanced
+
+    - name: "Scikit-learn"
+      proficiency: advanced
+
+    - name: "LangChain"
+      proficiency: advanced
+
+    - name: "FAISS"
+      proficiency: advanced
+
+    - name: "Sentence Transformers"
+      proficiency: advanced
+
+    - name: "Vector Databases"
+      proficiency: advanced
+
+    - name: "Knowledge Graphs"
+      proficiency: intermediate
+
+    - name: "LoRA"
+      proficiency: advanced
+
+    - name: "PEFT"
+      proficiency: advanced
+
+    - name: "Mistral-7B"
+      proficiency: advanced
+
+    - name: "FinBERT"
+      proficiency: advanced
+
+    - name: "Google Gemini"
+      proficiency: advanced
+
+    - name: "Streamlit"
+      proficiency: advanced
+
+    - name: "Jupyter Notebook"
+      proficiency: advanced
+
+  soft:
+
+    - "Problem Solving"
+    - "Analytical Thinking"
+    - "Leadership"
+    - "Communication"
+    - "Teamwork"
+    - "Quick Learning"
+    - "Adaptability"
+
+# ============================================================
+# Experience
+# ============================================================
+
+experience:
+
+  - company: "amasQIS.ai"
+
+    title: "LLM Engineering Intern"
+
+    start_date: "2025-03"
+
+    end_date: "2025-09"
+
+    current: false
+
+    location: "Remote"
+
+    description: |
+      Worked on production-scale LLM systems involving fine-tuning,
+      prompt engineering, inference optimization,
+      model deployment and scalable AI pipelines.
+
+    achievements:
+
+      - "Fine-tuned Mistral-7B using LoRA/PEFT improving recommendation relevance by 15%."
+
+      - "Optimized preprocessing across 50,000+ records reducing data noise by 40%."
+
+      - "Developed production-ready AI model serving pipelines."
+
+      - "Implemented scalable inference workflows following MLOps practices."
+
+# ============================================================
+# Education
+# ============================================================
+
+education:
+
+  - institution: "VIT Bhopal University"
+
+    degree: "Bachelor of Technology"
+
+    field: "Computer Science Engineering (Artificial Intelligence and Machine Learning)"
+
+    start_date: "2023-09"
+
+    end_date: "2027-05"
+
+    gpa: 9.01
+
+    relevant_courses:
+
+      - "Data Structures and Algorithms"
+      - "Operating Systems"
+      - "Database Management Systems"
+      - "Computer Networks"
+      - "Object Oriented Programming"
+      - "Machine Learning"
+      - "Artificial Intelligence"
+      - "Deep Learning"
+
+# ============================================================
+# Certifications
+# ============================================================
+
+certifications:
+
+  - name: "Microsoft Certified: Azure Data Fundamentals"
+    issuer: "Microsoft"
+
+  - name: "GEN AI using IBM Watsonx"
+    issuer: "IBM"
+
+# ============================================================
+# Languages
+# ============================================================
+
+languages:
+
+  - language: "English"
+    proficiency: fluent
+
+  - language: "Hindi"
+    proficiency: native
+
+# ============================================================
+# Resume Information
+# ============================================================
+
+resume:
+
+  default_resume: "/Users/himanshu/Desktop/Working/Linkdin/Himanshu_ATS_LATEX_7_JUNE.pdf"
+
+  variants:
+
+    ai: "/Users/himanshu/Desktop/Working/Linkdin/Himanshu_ATS_LATEX_7_JUNE.pdf"
+
+    backend: "/Users/himanshu/Desktop/Working/Linkdin/Himanshu_ATS_LATEX_7_JUNE.pdf"
+
+    sde: "/Users/himanshu/Desktop/Working/Linkdin/Himanshu_ATS_LATEX_7_JUNE.pdf"
+
+# ============================================================
+# Work Authorization
+# ============================================================
+
+work_authorization:
+
+  country: "India"
+
+  authorized: true
+
+  requires_visa_sponsorship: false
+
+# ============================================================
+# Job Search Configuration
+# ============================================================
+
+job_search:
+
+  employment_types:
+
+    - "Full-time"
+    - "Internship"
+    - "New Graduate"
+
+  experience_levels:
+
+    - "Internship"
+    - "Entry Level"
+    - "Associate"
+
+  joining_availability: "Immediate"
+
+  notice_period: "Immediate"
+
+  apply_internationally: false
+
+# ============================================================
+# Search Keywords
+# ============================================================
+
+search_keywords:
+
+  include:
+
+    - "Software Development Engineer"
+    - "Software Engineer"
+    - "Backend Engineer"
+    - "Python Developer"
+    - "AI Engineer"
+    - "Machine Learning Engineer"
+    - "LLM Engineer"
+    - "Generative AI Engineer"
+    - "Applied AI Engineer"
+    - "FastAPI"
+    - "Python"
+    - "RAG"
+    - "AI Agent"
+    - "LangChain"
+    - "Vector Database"
+
+  exclude:
+
+    - "Senior"
+    - "Staff"
+    - "Lead"
+    - "Principal"
+    - "Manager"
+    - "Sales"
+    - "Marketing"
+    - "Business Analyst"
+    - "SAP"
+    - "Oracle Functional"
+
+# ============================================================
+# Online Profiles
+# ============================================================
+
+profiles:
+
+  github: "https://github.com/H-lamba"
+
+  linkedin: "https://www.linkedin.com/in/himanshu-50385730a/"
+
+  leetcode: ""
+
+  codeforces: ""
+
+  kaggle: ""
+
+  huggingface: ""
+
+# ============================================================
+# Company Preferences
+# ============================================================
+
+preferred_company_tiers:
+
+  - "FAANG"
+  - "Big Tech"
+  - "Product Companies"
+  - "AI Startups"
+  - "Well-funded Startups"
+  - "MNC"
+
+blacklisted_companies: []
+
+# ============================================================
+# Application Behaviour
+# ============================================================
+
+application_preferences:
+
+  auto_apply: true
+
+  auto_fill_forms: true
+
+  auto_upload_resume: true
+
+  auto_generate_cover_letter: true
+
+  auto_answer_screening_questions: true
+
+  customize_resume_per_job: true
+
+  generate_followup_email: true
+
+  save_failed_applications: true
+
+  minimum_match_score: 75
+
+  maximum_daily_applications: 50
+
+# ============================================================
+# Documents
+# ============================================================
+
+documents:
+
+  generate_cover_letter: true
+
+  generate_followup_email: true
+
+  generate_thank_you_email: true

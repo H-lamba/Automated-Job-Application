@@ -1,0 +1,88 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[project]
+name = "career-agent"
+version = "0.1.0"
+description = "Autonomous AI Career Agent — locally-run, LLM-powered job discovery and application system"
+requires-python = ">=3.11"
+dependencies = [
+    # Web framework
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+
+    # Database
+    "sqlalchemy[asyncio]>=2.0.36",
+    "aiosqlite>=0.20.0",
+
+    # Browser automation (Phase 2, pre-declared)
+    "playwright>=1.49.0",
+
+    # Local LLM (Ollama for reasoning, MLX for vision on Apple Silicon)
+    "ollama>=0.4.0",
+    "mlx-lm>=0.22.0",       # Gemma4 via Apple MLX (M-series GPU)
+
+    # Semantic memory
+    "chromadb>=0.5.0",
+
+    # Pydantic & config
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.6.0",
+    "pyyaml>=6.0.2",
+    "python-dotenv>=1.0.0",
+
+    # HTTP client
+    "httpx>=0.28.0",
+
+    # Logging
+    "loguru>=0.7.3",
+
+    # Scheduling
+    "apscheduler>=3.10.4",
+
+    # Retry logic
+    "tenacity>=9.0.0",
+
+    # CLI / output formatting
+    "rich>=13.9.0",
+    "typer>=0.13.0",
+
+    # Hashing / utilities
+    "xxhash>=3.5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-mock>=3.14.0",
+    "respx>=0.22.0",           # Mock httpx requests
+    "factory-boy>=3.3.0",      # Test fixtures
+    "ruff>=0.7.0",              # Linting
+    "mypy>=1.13.0",             # Type checking
+]
+
+[project.scripts]
+career-agent = "main:cli_app"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+log_cli = true
+log_cli_level = "INFO"
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+ignore_missing_imports = true

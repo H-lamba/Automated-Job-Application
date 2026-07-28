@@ -1,0 +1,180 @@
+# ============================================================
+# Autonomous AI Career Agent — Master Configuration
+# ============================================================
+# All values here can be overridden by environment variables.
+# See .env.example for the naming convention.
+# ============================================================
+
+# ──────────────────────────────────────────────────────────
+# LLM Settings
+# ──────────────────────────────────────────────────────────
+llm:
+  ollama_base_url: "http://localhost:11434"
+
+  # Primary reasoning model — used for scoring, planning, Q&A
+  reasoning_model: "qwen3:8b"
+
+  # Vision model — used for screenshot understanding (Phase 2)
+  # You have gemma-4-12b-it-4bit (MLX) from HuggingFace — using that via mlx_lm.
+  # Set vision_backend: "mlx" to use it. If you pull a vision model into Ollama
+  # (e.g. `ollama pull llava:13b`) change vision_backend to "ollama".
+  vision_model: "mlx-community/gemma-4-12b-it-4bit"
+  vision_backend: "mlx"   # "ollama" | "mlx"
+
+  # Request timeout in seconds
+  timeout: 120
+
+  # Max retries on transient failures
+  max_retries: 3
+
+  # Temperature for job scoring (lower = more deterministic)
+  scoring_temperature: 0.1
+
+  # Temperature for Q&A generation (slightly higher for natural phrasing)
+  qa_temperature: 0.4
+
+# ──────────────────────────────────────────────────────────
+# Storage Paths
+# ──────────────────────────────────────────────────────────
+storage:
+  # SQLite database file
+  database_url: "sqlite+aiosqlite:///./data/career_agent.db"
+
+  # ChromaDB local persistence directory
+  chroma_path: "./data/chroma"
+
+  # Directory scanned for resume and supporting documents
+  # Resume is placed directly in the project folder
+  documents_dir: "/Users/himanshu/Desktop/Working/Linkdin"
+
+  # Screenshots captured per application run (Phase 2)
+  screenshots_dir: "./data/screenshots"
+
+  # Structured log files (in addition to console)
+  logs_dir: "./data/logs"
+
+# ──────────────────────────────────────────────────────────
+# User Profile
+# ──────────────────────────────────────────────────────────
+profile:
+  # Path to the YAML profile Himanshu fills in
+  path: "./profile/profile.yaml"
+
+  # Which resume file to use by default (relative to documents_dir)
+  default_resume: "Himanshu_ATS_LATEX_7_JUNE.pdf"
+
+# ──────────────────────────────────────────────────────────
+# Job Discovery
+# ──────────────────────────────────────────────────────────
+discovery:
+  # Minimum relevance score (0–100) to queue a job for application
+  # Matches profile's minimum_match_score: 75
+  min_relevance_score: 75.0
+
+  # Max new jobs to process per discovery run (prevents LLM overload)
+  max_jobs_per_run: 50
+
+  # Number of jobs to LLM-score per batch (parallel async calls)
+  llm_score_batch_size: 5
+
+  # How many recent job descriptions to embed in memory for dedup
+  memory_lookback_days: 30
+
+  # ── Greenhouse sources ──────────────────────────────────
+  # Add company slugs from their Greenhouse board URLs.
+  # Format: https://boards.greenhouse.io/{slug}
+  greenhouse_companies:
+    - "anthropic"
+    - "openai"
+    - "scale-ai"
+    - "cohere"
+    - "mistral"
+    - "huggingface"
+    - "perplexity"
+    - "anyscale"
+    - "modal-labs"
+    - "together-ai"
+
+  # ── Lever sources ───────────────────────────────────────
+  # Format: https://jobs.lever.co/{slug}
+  lever_companies:
+    - "openai"
+    - "notion"
+    - "figma"
+    - "linear"
+    - "vercel"
+    - "supabase"
+    - "planetscale"
+    - "cal.com"
+
+  # ── Ashby sources ───────────────────────────────────────
+  # Format: https://jobs.ashbyhq.com/{slug}
+  ashby_companies:
+    - "cursor"
+    - "warp"
+    - "retool"
+    - "posthog"
+    - "letta"
+    - "groq"
+
+# ──────────────────────────────────────────────────────────
+# Application Settings
+# ──────────────────────────────────────────────────────────
+application:
+  # Maximum applications to submit per day (safety limit)
+  daily_limit: 10
+
+  # Dry run: go through all steps but don't click Submit
+  dry_run: true   # ← Set to false when you're ready to go live
+
+  # Seconds to wait between applications (politeness + safety)
+  inter_application_delay: 30
+
+# ──────────────────────────────────────────────────────────
+# Browser Settings (Phase 2)
+# ──────────────────────────────────────────────────────────
+browser:
+  # headed = browser window visible (recommended for monitoring)
+  headless: false
+
+  # Browser engine: chromium | firefox | webkit
+  browser_type: "chromium"
+
+  # Default viewport dimensions
+  viewport_width: 1440
+  viewport_height: 900
+
+  # Seconds before a navigation/action times out
+  timeout: 30
+
+  # Milliseconds to wait after each action (human-like pacing)
+  action_delay_ms: 500
+
+# ──────────────────────────────────────────────────────────
+# Scheduler
+# ──────────────────────────────────────────────────────────
+scheduler:
+  # How often to run discovery (in hours)
+  discovery_interval_hours: 6
+
+  # Cron expression for application runs (default: 9 AM IST weekdays)
+  application_cron: "30 3 * * 1-5"   # 03:30 UTC = 09:00 IST
+
+  # Keep screenshots older than N days and then archive them
+  screenshot_retention_days: 30
+
+# ──────────────────────────────────────────────────────────
+# Logging
+# ──────────────────────────────────────────────────────────
+logging:
+  # Console log level: TRACE | DEBUG | INFO | WARNING | ERROR
+  level: "INFO"
+
+  # Rotate log file when it exceeds this size
+  rotation: "50 MB"
+
+  # Keep log files for this many days
+  retention: "30 days"
+
+  # JSON structured logging to file (for analytics)
+  json_logs: true
