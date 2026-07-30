@@ -198,7 +198,11 @@ class OllamaClient:
                 self._client.chat(
                     model=target_model,
                     messages=full_messages,
-                    options={"temperature": temperature},
+                    options={
+                        "temperature": temperature,
+                        "num_ctx": 4096,      # Explicit context window — prevents OOM/empty responses
+                        "num_predict": 512,   # Cap output tokens for scoring (we only need ~100)
+                    },
                     think=think,
                     format=format or "",
                 ),

@@ -37,10 +37,17 @@ class PromptTemplate:
 
 SCORE_JOB_PROMPT = PromptTemplate(
     name="score_job",
-    version="1.0",
-    system="""You are a highly accurate job-fit evaluator.
-Your job is to assess how well a job listing matches a candidate's profile.
-You must respond ONLY with valid JSON. Do not include any explanation outside the JSON object.""",
+    version="2.0",
+    system="""You are a precise job-fit evaluator for a software/ML engineer candidate.
+Your job is to assess how well a job listing matches a candidate's technical profile.
+You must respond ONLY with valid JSON. Do not include any explanation outside the JSON object.
+
+CRITICAL RULES:
+- If the job is primarily non-technical (accounting, legal, recruiting, sales, marketing,
+  operations, HR, data-center physical work, policy), set title_match <= 20 and overall <= 30.
+- Only score high if the job primarily requires software engineering, ML, data science,
+  or closely related technical skills.
+- "apply" must be true ONLY if overall >= 75 AND the role is clearly technical/engineering.""",
     user_template="""Evaluate this job against the candidate profile.
 
 ## Candidate Profile
@@ -62,16 +69,19 @@ You must respond ONLY with valid JSON. Do not include any explanation outside th
 
 ## Scoring Criteria
 Score each dimension from 0 to 100:
-1. title_match: How closely the job title matches target roles
-2. skills_match: What percentage of listed requirements match candidate skills
+1. title_match: How closely the job title matches TARGET ROLES list (0 if non-technical)
+2. skills_match: % of job requirements that match candidate's TECHNICAL SKILLS
 3. experience_match: Does the required experience level match the candidate?
 4. location_match: Does the location/remote policy fit preferences?
-5. overall: Weighted final score (title 25%, skills 40%, experience 20%, location 15%)
+5. overall: Weighted score (title 30%, skills 40%, experience 20%, location 10%)
+   • Non-technical roles (accountant, recruiter, legal, ops, sales, HR): overall <= 30
+   • Partially technical (DevOps, TPM): overall <= 60
+   • Fully technical (SWE, MLE, data science): can score up to 100
 
 Also provide:
-- "apply": true/false — should we apply to this job?
-- "reasoning": 1-2 sentence explanation of the overall score
-- "missing_skills": list of skills mentioned in the job but absent from the profile
+- "apply": true ONLY if overall >= 75 AND role is software/ML engineering
+- "reasoning": 1-2 sentences on why this score
+- "missing_skills": list of skills in job but absent from profile
 
 Respond with this exact JSON structure:
 {{
@@ -218,6 +228,23 @@ Do NOT include date, address blocks, or "Dear Hiring Manager" — just the body 
 # Keyword Pre-Filter (no LLM, just function)
 # ──────────────────────────────────────────────────────────────────────────────
 
+# Roles that are clearly non-engineering — skip before sending to LLM
+_NON_TECH_TITLE_BLOCKLIST = [
+    "accountant", "accounting", "recruiter", "recruiting", "talent",
+    "legal", "counsel", "attorney", "compliance", "paralegal",
+    "data center technician", "datacenter technician",
+    "executive assistant", "office manager", "administrative",
+    "sales", "account executive", "account manager",
+    "marketing", "communications", "public relations",
+    "finance", "financial analyst", "fp&a",
+    "procurement", "sourcing", "supply chain",
+    "policy", "government affairs", "regulatory",
+    "human resources", "hr ", "people operations",
+    "operations associate", "program manager",  # keep TPM / eng program manager
+    "physician", "medical", "clinical",
+]
+
+
 def keyword_pre_score(
     job_title: str,
     job_description: str,
@@ -231,8 +258,14 @@ def keyword_pre_score(
     Returns a score; jobs below config.discovery.min_relevance_score
     are skipped without burning LLM tokens.
     """
+    title_lower = job_title.lower()
     text = (job_title + " " + job_description).lower()
     score = 0.0
+
+    # Hard blocklist: immediately discard non-engineering roles
+    for blocked in _NON_TECH_TITLE_BLOCKLIST:
+        if blocked in title_lower:
+            return 0.0
 
     # Title match (up to 40 points)
     for role in target_roles:

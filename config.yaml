@@ -72,7 +72,7 @@ discovery:
   min_relevance_score: 75.0
 
   # Max new jobs to process per discovery run (prevents LLM overload)
-  max_jobs_per_run: 50
+  max_jobs_per_run: 100
 
   # Number of jobs to LLM-score per batch (parallel async calls)
   llm_score_batch_size: 5
@@ -81,41 +81,58 @@ discovery:
   memory_lookback_days: 30
 
   # ── Greenhouse sources ──────────────────────────────────
-  # Add company slugs from their Greenhouse board URLs.
-  # Format: https://boards.greenhouse.io/{slug}
+  # Verified working via: GET https://boards-api.greenhouse.io/v1/boards/{slug}/jobs
   greenhouse_companies:
-    - "anthropic"
-    - "openai"
-    - "scale-ai"
-    - "cohere"
-    - "mistral"
-    - "huggingface"
-    - "perplexity"
-    - "anyscale"
-    - "modal-labs"
-    - "together-ai"
+    - "anthropic"      # 413 jobs
+    - "scaleai"        # 208 jobs — AI data/labeling
+    - "databricks"     # 800 jobs — data/ML platform
+    - "mongodb"        # 398 jobs — database/backend
+    - "elastic"        # 214 jobs — search/ML infra
+    - "cloudflare"     # 277 jobs — edge/infra/AI
+    - "stripe"         # 534 jobs — fintech/backend
+    - "figma"          # 178 jobs — product engineering
+    - "deepmind"       # 10 jobs  — ML research
+    - "datadog"        # 421 jobs — observability/infra
+    - "twilio"         # 188 jobs — comms infra
+    - "xai"            # 199 jobs — Elon's AI company
+    - "coreweave"      # 292 jobs — GPU cloud/ML infra
+    - "labelbox"       # 7 jobs   — AI data labeling
+    - "imbue"          # 2 jobs   — AI research
 
   # ── Lever sources ───────────────────────────────────────
-  # Format: https://jobs.lever.co/{slug}
+  # Verified working via: GET https://api.lever.co/v0/postings/{slug}?mode=json
   lever_companies:
-    - "openai"
-    - "notion"
-    - "figma"
-    - "linear"
-    - "vercel"
-    - "supabase"
-    - "planetscale"
-    - "cal.com"
+    - "anyscale"       # 1 job — Ray/distributed ML
 
   # ── Ashby sources ───────────────────────────────────────
-  # Format: https://jobs.ashbyhq.com/{slug}
+  # Verified working via: GET https://api.ashbyhq.com/posting-api/job-board/{slug}
+  # NOTE: Uses GET (not POST). POST returns 401.
   ashby_companies:
-    - "cursor"
-    - "warp"
-    - "retool"
-    - "posthog"
-    - "letta"
-    - "groq"
+    - "openai"         # OpenAI — uses Ashby!
+    - "cursor"         # Cursor AI editor
+    - "perplexity"     # Perplexity AI
+    - "mistral"        # Mistral AI
+    - "cohere"         # Cohere
+    - "groq"           # Groq
+    - "cerebras"       # Cerebras (fast inference)
+    - "together"       # Together AI
+    - "elevenlabs"     # ElevenLabs (voice AI)
+    - "replit"         # Replit
+    - "runway"         # Runway ML
+    - "warp"           # Warp terminal
+    - "retool"         # Retool
+    - "posthog"        # PostHog
+    - "letta"          # Letta (MemGPT)
+    - "linear"         # Linear
+    - "notion"         # Notion
+    - "vercel"         # Vercel
+    - "supabase"       # Supabase
+    - "browserbase"    # Browserbase
+    - "coreweave"      # CoreWeave (also on GH — skip duplicate)
+    - "anyscale"       # Anyscale (also on Lever)
+    - "rippling"       # Rippling HR
+    - "dbtlabs"        # dbt Labs
+    - "hex"            # Hex analytics
 
 # ──────────────────────────────────────────────────────────
 # Application Settings
