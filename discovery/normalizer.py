@@ -108,6 +108,47 @@ def detect_remote(raw: RawJob) -> bool:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Location filtering
+# ──────────────────────────────────────────────────────────────────────────────
+
+_INDIA_KEYWORDS = {
+    "india", "bengaluru", "bangalore", "hyderabad", "pune", "chennai",
+    "mumbai", "delhi", "gurugram", "gurgaon", "noida", "kolkata",
+    "ahmedabad", "ncr",
+}
+
+
+def matches_target_locations(
+    job: JobListing,
+    locations_ok: list[str],
+    require_india_or_remote: bool = True,
+) -> bool:
+    """
+    Return True if the job's location is acceptable — i.e. it's remote,
+    or it mentions one of the target locations (default: India-based
+    locations from profile.preferences.locations_ok).
+
+    This runs BEFORE LLM scoring to avoid wasting LLM calls on jobs
+    that are geographically disqualified regardless of relevance.
+    """
+    if job.remote:
+        return True
+
+    location_text = (job.location or "").lower()
+
+    # Match against profile's explicit locations_ok list
+    for loc in locations_ok:
+        if loc.lower() != "remote" and loc.lower() in location_text:
+            return True
+
+    # Fallback: broad India keyword match (catches cities not in the profile list)
+    if require_india_or_remote:
+        return any(kw in location_text for kw in _INDIA_KEYWORDS)
+
+    return False
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Main normalizer
 # ──────────────────────────────────────────────────────────────────────────────
 

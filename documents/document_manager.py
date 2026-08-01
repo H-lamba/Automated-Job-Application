@@ -101,6 +101,8 @@ class DocumentManager:
 
             doc_type = self._classify(file_path)
             is_default = file_path.name == self.default_resume_name
+            if is_default:
+                doc_type = DocumentType.RESUME
 
             doc = Document(
                 path=file_path,

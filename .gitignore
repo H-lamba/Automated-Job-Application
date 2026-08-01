@@ -42,3 +42,18 @@ htmlcov/
 # Playwright
 playwright-report/
 test-results/
+
+
+
+# Generated job data
+raw_jobs.json
+
+# Generated inspection screenshots
+data/inspection/
+
+# Generated tailored documents
+data/tailored/
+
+# Python cache
+__pycache__/
+*.py[cod]

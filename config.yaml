@@ -140,7 +140,7 @@ application:
   daily_limit: 10
 
   # Dry run: go through all steps but don't click Submit
-  dry_run: false   # ← Set to false when you're ready to go live
+  dry_run: true   # ← Set to false when you're ready to go live
 
   # Seconds to wait between applications (politeness + safety)
   inter_application_delay: 30

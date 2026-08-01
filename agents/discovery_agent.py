@@ -205,13 +205,33 @@ class DiscoveryAgent(BaseAgent):
         new_jobs = [j for j in normalized if j.url_hash not in existing_hashes]
         self._skipped_count = len(normalized) - len(new_jobs)
 
+        # ── Location filter — India or Remote only ──────────────────────────
+        from discovery.normalizer import matches_target_locations
+
+        location_filtered: list[JobListing] = []
+        location_rejected = 0
+        for job in new_jobs:
+            if matches_target_locations(job, self.profile.preferences.locations_ok):
+                location_filtered.append(job)
+            else:
+                job.status = JobStatus.SKIPPED.value
+                job.score_reasoning = f"Location filter: '{job.location}' not in India/Remote"
+                location_rejected += 1
+
+        self._skipped_count += location_rejected
+        logger.info(
+            "Location filter — {} passed, {} rejected (not India/Remote)",
+            len(location_filtered),
+            location_rejected,
+        )
+
         # Keyword pre-score — cheap filter before LLM
         target_roles = self.profile.preferences.target_roles
         skill_names = self.profile.skills.technical_names()
         min_score = self.settings.discovery.min_relevance_score
 
         pre_scored: list[JobListing] = []
-        for job in new_jobs:
+        for job in location_filtered:
             score = keyword_pre_score(
                 job_title=job.title,
                 job_description=job.description or "",

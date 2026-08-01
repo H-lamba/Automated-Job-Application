@@ -142,7 +142,16 @@ async def main() -> None:
         )
         db_jobs = res.scalars().all()
 
+        from discovery.normalizer import matches_target_locations
+
         for i, job in enumerate(db_jobs, 1):
+            if not matches_target_locations(job, profile.preferences.locations_ok):
+                job.relevance_score = 0.0
+                job.status = JobStatus.SKIPPED.value
+                job.score_reasoning = f"Location filter: '{job.location}' not in India/Remote"
+                skipped += 1
+                continue
+
             # Fast blocklist check before LLM
             tech_skills = profile.skills_summary().split(", ")
             pre = keyword_pre_score(
