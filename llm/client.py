@@ -413,8 +413,19 @@ class OllamaClient:
     # ──────────────────────────────────────────────────────────────────────────
 
     @classmethod
-    def from_settings(cls, settings: Any) -> "OllamaClient":
-        """Build an OllamaClient from the application Settings object."""
+    def from_settings(cls, settings: Any) -> Any:
+        """Build an LLM Client from the application Settings object."""
+        provider = getattr(settings.llm, "provider", "ollama")
+        
+        if provider == "gemini":
+            from llm.gemini_client import GeminiClient
+            return GeminiClient(
+                reasoning_model=settings.llm.reasoning_model,
+                vision_model=settings.llm.vision_model,
+                timeout=settings.llm.timeout,
+                max_retries=settings.llm.max_retries,
+            )
+            
         return cls(
             base_url=settings.llm.ollama_base_url,
             reasoning_model=settings.llm.reasoning_model,

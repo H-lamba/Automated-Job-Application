@@ -1,82 +1,85 @@
-# 🚀 Autonomous AI Career Agent
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Status-Phase%201%20Completed-brightgreen?style=for-the-badge" alt="Phase 1 Complete">
-  <img src="https://img.shields.io/badge/Phase%202-In%20Progress-blue?style=for-the-badge" alt="Phase 2 In Progress">
-  <img src="https://img.shields.io/badge/AI-Ollama%20%7C%20MLX-orange?style=for-the-badge" alt="AI Stack">
-</p>
-
-## 🌟 Project Vision
-A production-quality **Autonomous AI Career Agent** designed to automate the entire job application lifecycle. It autonomously discovers jobs from multiple ATS platforms, reasons about candidate fit using local LLMs, and manages applications intelligently. 
-
-Unlike simple browser bots, this is a modular AI system built for scale, maintainability, and extensibility.
+<div align="center">
+  <img src="https://raw.githubusercontent.com/H-lamba/Automated-Job-Application/main/.github/logo.png" width="120" alt="Career Agent Logo" />
+  <h1>🤖 Autonomous AI Career Agent</h1>
+  <p><em>An end-to-end autonomous agent that discovers jobs, scores them against your profile, and applies automatically using a vision-backed web automation engine.</em></p>
+  
+  <p>
+    <img src="https://img.shields.io/badge/Python-3.11+-blue.svg" alt="Python Version" />
+    <img src="https://img.shields.io/badge/Playwright-Automation-green.svg" alt="Playwright" />
+    <img src="https://img.shields.io/badge/LLM-Gemini_&_Ollama-orange.svg" alt="LLM" />
+  </p>
+</div>
 
 ---
 
-## 🏗️ Architecture
+## 🌟 Project Architecture
+
+Our agent follows a modular architecture composed of three main layers: **Intelligence**, **Automation**, and **Storage**. 
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#4f46e5', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#3730a3', 'lineColor': '#818cf8', 'tertiaryColor': '#e0e7ff', 'edgeLabelBackground': '#f3f4f6'}}}%%
 graph TD
-    %% Define Styles
-    classDef user fill:#FF9999,stroke:#333,stroke-width:2px,color:#000,font-weight:bold;
-    classDef agent fill:#99CCFF,stroke:#333,stroke-width:2px,color:#000,font-weight:bold;
-    classDef llm fill:#FFCC99,stroke:#333,stroke-width:2px,color:#000,font-weight:bold;
-    classDef ats fill:#99FF99,stroke:#333,stroke-width:2px,color:#000,font-weight:bold;
-    classDef db fill:#E5CCFF,stroke:#333,stroke-width:2px,color:#000,font-weight:bold;
-    classDef vision fill:#FFFF99,stroke:#333,stroke-width:2px,color:#000,font-weight:bold;
-
-    U((👤 User Profile & Resume)):::user -->|Config & Specs| DA[🔍 Discovery Agent]:::agent
+    classDef llm fill:#8b5cf6,stroke:#5b21b6,color:white,stroke-width:2px;
+    classDef browser fill:#10b981,stroke:#047857,color:white,stroke-width:2px;
+    classDef db fill:#f59e0b,stroke:#b45309,color:white,stroke-width:2px;
+    classDef core fill:#3b82f6,stroke:#1d4ed8,color:white,stroke-width:2px;
     
-    subgraph ATS Platforms
-        GH[Greenhouse]:::ats
-        LV[Lever]:::ats
-        AB[Ashby]:::ats
+    subgraph Core
+        C[Profile Loader]:::core --> |Parses YAML| Config[Config Manager]:::core
     end
     
-    DA -->|GET / APIs| GH
-    DA -->|GET / APIs| LV
-    DA -->|GET / APIs| AB
+    subgraph Discovery Phase
+        JE[Job Extractors]:::browser --> |Scrapes ATS| DB[(SQLite Database)]:::db
+        LLM1[Gemini 3.5 Flash / Ollama]:::llm --> |Scores Match %| DB
+    end
     
-    DA -->|Deduplication & Keyword Pre-filter| DB[(SQLite DB)]:::db
-    
-    DA <-->|Sequential Job Scoring| LLM{Ollama: qwen3:8b}:::llm
-    
-    DB -->|Relevant Jobs >=75| AA[🤖 Application Agent]:::agent
-    
-    AA <-->|Browser Automation| ATS2[ATS Portals]:::ats
-    AA <-->|Visual Verification| VM{Vision Model: Gemma 4}:::vision
+    subgraph Application Phase
+        DB --> |Queues jobs| AA[Application Agent]:::core
+        AA --> BA[Browser Agent (Playwright)]:::browser
+        BA --> |Takes Screenshots| VM[Vision Module]:::llm
+        VM --> |Form Recognition| AA
+        AA --> |Fills Form & Submits| BA
+    end
 ```
 
 ---
 
-## 🗺️ Phases & Roadmap
+## 🚀 Development Phases & Achievements
 
-### ✅ Phase 1: Intelligent Discovery
-**Goal:** Continuously discover and accurately score job postings based on candidate profile fit.
-- **Multi-Source Fetching:** Deep integration with Greenhouse (15+ companies), Lever, and Ashby (25+ companies).
-- **Keyword Pre-filtering:** Fast keyword evaluation and hard blocklists to instantly discard non-engineering (HR, Legal, Sales, Data Center) roles before burning LLM cycles.
-- **LLM Reasoning Loop:** Integrated `qwen3:8b` via local Ollama for nuanced, sequential scoring of jobs across 5 dimensions (Title, Skills, Experience, Location, Overall).
-- **Prompt Engineering:** Refined scoring prompts with strict penalties to ensure only highly technical engineering/ML roles pass the threshold.
-- **Database Integration:** Scalable SQLite backend tracking thousands of jobs, eliminating duplicate processing.
+### 🎯 Phase 1: Foundation & Discovery Engine
+*The infrastructure to find jobs and match them with high precision.*
 
-### 🚧 Phase 2: Autonomous Execution (In Progress)
-**Goal:** Automate the application submission process.
-- **Browser Automation:** Headed agents that navigate ATS portals and render JS-heavy pages.
-- **Form Filling & Q&A:** Dynamic extraction of form fields and LLM-driven answering of application questions based on the candidate's profile.
-- **Visual Verification:** Leveraging local vision models (`mlx-community/gemma-4-12b-it-4bit`) to visually verify form submissions, read captchas, and detect success/error states.
-- **Document Management:** Automatic uploading of the candidate's resume and dynamically generated, highly-targeted cover letters.
+✅ **YAML User Profile:** Structured ATS-friendly schema for skills, experiences, and target jobs.
+✅ **ATS Extractors:** Reverse-engineered APIs for **Greenhouse, Lever, and Ashby** to pull structured jobs.
+✅ **AI Job Scoring:** LLM integration (Gemini/Ollama) to semantically score a job description against the user's profile, generating a 0-100 `relevance_score`.
+✅ **Database Persistence:** SQLite + SQLAlchemy ORM handling deduplication, history, and status queues.
+
+### 🕹️ Phase 2: Autonomous Application Engine (Current)
+*Giving the agent the ability to act on the web autonomously.*
+
+✅ **Playwright Headless Browser:** Full automation wrapper with screenshot capabilities and session management.
+✅ **Vision-Language Model (VLM):** Deep integration with `gemini-3.5-flash` to take visual screenshots of the DOM and answer: *"Is this an application form?"*
+✅ **Adaptive Form Filling:** DOM-selector algorithms targeting dynamic input fields (name, email, phone, LinkedIn, GitHub) via unified matching.
+✅ **LLM Factory Pattern:** Seamlessly switch between Local (Ollama) and Cloud API (Gemini) backends through `config.yaml`.
+✅ **Automated Submit:** Live integration mapping that successfully navigates to an ATS and hits the submit button.
 
 ---
 
-## 🏆 What We've Achieved So Far
+## ⚙️ Configuration
 
-- 🚀 **Massive Job Ingestion:** Successfully fetched **5,900+ jobs** from top-tier AI and tech companies (Anthropic, ScaleAI, OpenAI, Databricks, Cloudflare, etc.).
-- 🧠 **Smart Deduplication & Filtering:** The system automatically skips duplicates and uses keyword analysis to filter out obviously irrelevant titles, reducing LLM load.
-- 🎯 **Precision Scoring:** Re-architected the LLM context limits and scoring prompts to accurately evaluate jobs, successfully identifying real gems (like *Applied AI Engineer*, *Machine Learning Engineer*) while punishing noisy generic roles.
-- 🔒 **100% Local AI Infrastructure:** Completely reliant on local, private models (Ollama and MLX) ensuring zero API costs and total data privacy.
+The entire system behavior is controlled by `config.yaml`. You can choose your intelligence provider seamlessly:
 
-<br/>
+```yaml
+llm:
+  provider: "gemini"    # Switch to "ollama" for local execution!
+  reasoning_model: "gemini-3.5-flash"
+  vision_model: "gemini-3.5-flash"
+```
 
-<p align="center">
-  <i>Built with ❤️ for fully autonomous career advancement.</i>
-</p>
+## 🛠️ Usage
+
+To kick off an autonomous application sprint:
+```bash
+python run_application.py
+```
+*Tip: Ensure your `GEMINI_API_KEY` is loaded in your `.env` file, and `dry_run: false` is set in the config to trigger real submissions.*

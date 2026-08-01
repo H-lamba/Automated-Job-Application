@@ -9,17 +9,15 @@
 # LLM Settings
 # ──────────────────────────────────────────────────────────
 llm:
-  ollama_base_url: "http://localhost:11434"
+  provider: "gemini"    # "gemini" | "ollama"
+  
+  # Base URL for Ollama API (used only if provider="ollama")
+  ollama_base_url: "http://127.0.0.1:11434"
 
-  # Primary reasoning model — used for scoring, planning, Q&A
-  reasoning_model: "qwen3:8b"
-
-  # Vision model — used for screenshot understanding (Phase 2)
-  # You have gemma-4-12b-it-4bit (MLX) from HuggingFace — using that via mlx_lm.
-  # Set vision_backend: "mlx" to use it. If you pull a vision model into Ollama
-  # (e.g. `ollama pull llava:13b`) change vision_backend to "ollama".
-  vision_model: "mlx-community/gemma-4-12b-it-4bit"
-  vision_backend: "mlx"   # "ollama" | "mlx"
+  # Core reasoning model
+  reasoning_model: "gemini-3.5-flash"
+  vision_model: "gemini-3.5-flash"
+  vision_backend: "gemini"   # Not used if provider="gemini"
 
   # Request timeout in seconds
   timeout: 120
@@ -142,7 +140,7 @@ application:
   daily_limit: 10
 
   # Dry run: go through all steps but don't click Submit
-  dry_run: true   # ← Set to false when you're ready to go live
+  dry_run: false   # ← Set to false when you're ready to go live
 
   # Seconds to wait between applications (politeness + safety)
   inter_application_delay: 30

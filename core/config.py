@@ -28,6 +28,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class LLMSettings(BaseModel):
+    provider: str = "ollama"
     ollama_base_url: str = "http://localhost:11434"
     reasoning_model: str = "qwen3:8b"
     vision_model: str = "mlx-community/gemma-4-12b-it-4bit"
