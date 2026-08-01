@@ -145,7 +145,10 @@ async def main() -> None:
         from discovery.normalizer import matches_target_locations
 
         for i, job in enumerate(db_jobs, 1):
-            if not matches_target_locations(job, profile.preferences.locations_ok):
+            passed_loc = matches_target_locations(job, profile.preferences.locations_ok)
+            logger.info("LOCFILTER job='{}' loc='{}' remote={} passed={}", job.title, job.location, job.remote, passed_loc)
+            
+            if not passed_loc:
                 job.relevance_score = 0.0
                 job.status = JobStatus.SKIPPED.value
                 job.score_reasoning = f"Location filter: '{job.location}' not in India/Remote"

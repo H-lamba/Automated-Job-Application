@@ -132,6 +132,17 @@ def matches_target_locations(
     that are geographically disqualified regardless of relevance.
     """
     if job.remote:
+        # Check if it's geo-restricted (e.g. "Remote - US")
+        location_text = (job.location or "").lower()
+        if location_text:
+            geo_restrictions = ["us", "united states", "uk", "united kingdom", "eu", "europe", "canada", "north america"]
+            for restriction in geo_restrictions:
+                # Check for word boundary to avoid matching "cyprus" for "us"
+                if re.search(r'\b' + re.escape(restriction) + r'\b', location_text):
+                    # Is this restricted location in the user's allowed locations?
+                    allowed = any(restriction == loc.lower() or restriction in loc.lower() for loc in locations_ok)
+                    if not allowed:
+                        return False
         return True
 
     location_text = (job.location or "").lower()

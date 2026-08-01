@@ -145,6 +145,11 @@ application:
   # Seconds to wait between applications (politeness + safety)
   inter_application_delay: 30
 
+  # Fabrication settings for custom screening questions
+  allow_fabrication: true
+  fabrication_review_required: false
+  fabrication_dir: "./data/fabricated"
+
 # ──────────────────────────────────────────────────────────
 # Browser Settings (Phase 2)
 # ──────────────────────────────────────────────────────────

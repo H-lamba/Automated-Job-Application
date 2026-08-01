@@ -29,6 +29,7 @@ class GeminiClient:
         self.reasoning_model = reasoning_model
         self.vision_model = vision_model
         self.timeout = timeout
+        self.max_retries = max_retries
         
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
@@ -36,6 +37,23 @@ class GeminiClient:
         
         self.client = genai.Client(api_key=api_key)
         self.async_client = self.client.aio
+
+    async def _async_retry(self, coro_func, *args, **kwargs):
+        import asyncio
+        import re
+        for attempt in range(self.max_retries):
+            try:
+                return await coro_func(*args, **kwargs)
+            except Exception as e:
+                err_str = str(e)
+                if "429" in err_str:
+                    if attempt < self.max_retries - 1:
+                        match = re.search(r"retry in (\d+\.?\d*)s", err_str.lower())
+                        delay = float(match.group(1)) + 1.0 if match else 30.0
+                        logger.warning(f"Gemini API rate limit (429). Retrying in {delay:.1f}s (attempt {attempt+1}/{self.max_retries})")
+                        await asyncio.sleep(delay)
+                        continue
+                raise
 
     def _convert_messages_to_gemini(self, messages: list[dict[str, Any]]) -> list[types.Content]:
         """Converts OpenAI-style messages to Gemini Content objects."""
@@ -79,7 +97,8 @@ class GeminiClient:
         
         try:
             logger.debug(f"Gemini chat - model={target_model}")
-            response = await self.async_client.models.generate_content(
+            response = await self._async_retry(
+                self.async_client.models.generate_content,
                 model=target_model,
                 contents=contents,
                 config=config
@@ -172,7 +191,8 @@ class GeminiClient:
                 
             part = types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
             
-            response = await self.async_client.models.generate_content(
+            response = await self._async_retry(
+                self.async_client.models.generate_content,
                 model=target_model,
                 contents=[part, prompt],
                 config=types.GenerateContentConfig(temperature=temperature)

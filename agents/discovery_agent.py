@@ -211,7 +211,10 @@ class DiscoveryAgent(BaseAgent):
         location_filtered: list[JobListing] = []
         location_rejected = 0
         for job in new_jobs:
-            if matches_target_locations(job, self.profile.preferences.locations_ok):
+            passed_loc = matches_target_locations(job, self.profile.preferences.locations_ok)
+            logger.info("LOCFILTER job='{}' loc='{}' remote={} passed={}", job.title, job.location, job.remote, passed_loc)
+            
+            if passed_loc:
                 location_filtered.append(job)
             else:
                 job.status = JobStatus.SKIPPED.value

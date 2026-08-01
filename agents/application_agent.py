@@ -12,6 +12,8 @@ from profile.loader import load_profile
 from llm.client import OllamaClient
 from agents.tailoring_agent import TailoringAgent
 from documents.document_manager import DocumentManager
+from vision.form_extractor import FormExtractor
+from documents.fabrication_store import FabricationStore
 
 
 class ApplicationAgent:
@@ -29,6 +31,10 @@ class ApplicationAgent:
         self.documents = DocumentManager(
             documents_dir=self.settings.storage.documents_dir,
             default_resume=self.settings.profile.default_resume,
+        )
+        self.form_extractor = FormExtractor(self.llm, self.profile)
+        self.fabrication_store = FabricationStore(
+            getattr(self.settings.application, "fabrication_dir", "./data/fabricated")
         )
 
     async def process_queue(self):
@@ -104,8 +110,8 @@ class ApplicationAgent:
         if self.profile.application_preferences.auto_generate_cover_letter:
             cover_letter_path = await self.tailoring.draft_cover_letter(job, self.profile)
 
-        # 5. Fill standard fields, then attach documents
-        await self._fill_common_fields()
+        # 5. Fill standard fields and fabricated fields using LLM
+        await self._fill_form_with_llm(screenshot_path, job)
         await self._upload_documents(job, cover_letter_path)
 
         screenshot_path_filled = await self.browser.take_screenshot(job.id, "2_form_filled")
@@ -127,34 +133,93 @@ class ApplicationAgent:
 
         await db.commit()
 
-    async def _fill_common_fields(self):
-        """Naive DOM-based filling for Phase 2 proof of concept."""
+    async def _fill_form_with_llm(self, screenshot_path: str, job: JobListing):
+        """Uses DOM scraping + LLM to dynamically fill form fields and answer custom questions."""
         page = self.browser.page
+        
+        # 1. Scrape form inputs from the DOM
+        js_script = """
+        () => {
+            const inputs = [];
+            document.querySelectorAll('input:not([type="hidden"]):not([type="file"]), textarea, select').forEach(el => {
+                let label = '';
+                if (el.id) {
+                    const l = document.querySelector(`label[for="${el.id}"]`);
+                    if (l) label = l.innerText;
+                }
+                const options = [];
+                if (el.tagName.toLowerCase() === 'select') {
+                    for (let opt of el.options) {
+                        options.push(opt.text || opt.value);
+                    }
+                }
+                inputs.push({
+                    tag: el.tagName.toLowerCase(),
+                    name: el.name,
+                    id: el.id,
+                    type: el.type,
+                    label: label || el.placeholder || '',
+                    options: options
+                });
+            });
+            return inputs;
+        }
+        """
+        form_inputs = await page.evaluate(js_script)
+        if not form_inputs:
+            logger.info("No fillable form inputs found on page.")
+            return
 
-        if await page.locator("input[name*='name' i]").count() > 0:
-            logger.info("Filling name field")
-            await page.locator("input[name*='name' i]").first.fill(self.profile.personal.name)
-        elif await page.locator("input[name*='first' i]").count() > 0:
-            logger.info("Filling first/last name fields")
-            await page.locator("input[name*='first' i]").first.fill(self.profile.personal.first_name)
-            if await page.locator("input[name*='last' i]").count() > 0:
-                await page.locator("input[name*='last' i]").first.fill(self.profile.personal.last_name)
+        import json
+        
+        previous_answers = self.fabrication_store.load_previous_answers()
+        
+        form = await self.form_extractor.extract(
+            screenshot_path=screenshot_path,
+            job=job,
+            form_inputs_json=json.dumps(form_inputs, indent=2),
+            previous_answers=previous_answers
+        )
+        
+        # Save fabricated answers for audit trail
+        self.fabrication_store.save(job, form)
 
-        if await page.locator("input[name*='email' i]").count() > 0:
-            logger.info("Filling email field")
-            await page.locator("input[name*='email' i]").first.fill(self.profile.personal.email)
-
-        if await page.locator("input[name*='phone' i]").count() > 0:
-            logger.info("Filling phone field")
-            await page.locator("input[name*='phone' i]").first.fill(self.profile.personal.phone)
-
-        if await page.locator("input[name*='linkedin' i]").count() > 0 and getattr(self.profile.personal, 'linkedin', None):
-            logger.info("Filling LinkedIn field")
-            await page.locator("input[name*='linkedin' i]").first.fill(self.profile.personal.linkedin)
-
-        if await page.locator("input[name*='github' i]").count() > 0 and getattr(self.profile.personal, 'github', None):
-            logger.info("Filling GitHub field")
-            await page.locator("input[name*='github' i]").first.fill(self.profile.personal.github)
+        # 5. Execute Fills
+        for field in form.fields:
+            if not field.field_id or field.answer is None or field.source == "skipped":
+                continue
+                
+            selector_attr = field.field_id
+            value = field.answer
+                
+            # Try to match by name first, then id
+            loc = page.locator(f"[name='{selector_attr}']").first
+            if await loc.count() == 0:
+                loc = page.locator(f"[id='{selector_attr}']").first
+                
+            if await loc.count() > 0:
+                try:
+                    tag_name = await loc.evaluate("el => el.tagName.toLowerCase()")
+                    if tag_name == "select":
+                        # For select, we try to select by label
+                        try:
+                            await loc.select_option(label=str(value))
+                        except Exception:
+                            # Fallback to value if label fails
+                            await loc.select_option(value=str(value))
+                    else:
+                        type_attr = await loc.evaluate("el => el.type")
+                        if type_attr in ["checkbox", "radio"]:
+                            # We assume value is true/false or string indicating to check it
+                            if str(value).lower() in ["true", "yes", "1", "on"]:
+                                await loc.check()
+                        else:
+                            await loc.fill(str(value))
+                    logger.info(f"Filled {selector_attr} with '{value}' (source: {field.source})")
+                except Exception as e:
+                    logger.warning(f"Failed to fill {selector_attr}: {e}")
+            else:
+                logger.warning(f"Could not find element for selector: {selector_attr}")
 
     async def _upload_documents(self, job: JobListing, cover_letter_path) -> None:
         """

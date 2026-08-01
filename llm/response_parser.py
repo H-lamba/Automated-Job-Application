@@ -58,6 +58,26 @@ class PlannerResponse(BaseModel):
     args: dict[str, Any] = {}
     final_answer: str | None = None
 
+from typing import Literal
+
+class ExtractedFormField(BaseModel):
+    field_id: str            # a stable synthetic id (label+index) so we can map back to DOM
+    label: str
+    field_type: str          # text | textarea | email | phone | dropdown | checkbox | radio | file
+    required: bool = False
+    options: list[str] = []  # for dropdown/radio
+    answer: str | None = None
+    source: Literal["profile", "resume", "fabricated", "skipped"] = "profile"
+    confidence: float = 1.0  # LLM self-reported confidence, mainly meaningful for "fabricated"
+    reasoning: str = ""      # why it answered this way — useful for audit
+
+class ExtractedForm(BaseModel):
+    page_type: str
+    fields: list[ExtractedFormField] = []
+    submit_button_label: str | None = None
+    notes: str = ""
+
+
 
 class VisionResponse(BaseModel):
     """Structured output from the VISION_UNDERSTAND_PROMPT."""
@@ -160,5 +180,17 @@ def parse_vision_response(raw: str | dict) -> VisionResponse:
         raw_str = json.dumps(raw) if isinstance(raw, dict) else str(raw)
         raise LLMParseError(
             f"Failed to parse vision response: {e}",
+            raw_response=raw_str,
+        ) from e
+
+def parse_extracted_form(raw: str | dict) -> ExtractedForm:
+    """Parse the form extractor response."""
+    try:
+        data = raw if isinstance(raw, dict) else extract_json(raw)
+        return ExtractedForm(**data)
+    except (ValidationError, KeyError, TypeError) as e:
+        raw_str = json.dumps(raw) if isinstance(raw, dict) else str(raw)
+        raise LLMParseError(
+            f"Failed to parse extracted form: {e}",
             raw_response=raw_str,
         ) from e
