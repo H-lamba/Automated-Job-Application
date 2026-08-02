@@ -102,26 +102,23 @@ Respond with this exact JSON structure:
 
 ANSWER_QUESTION_PROMPT = PromptTemplate(
     name="answer_question",
-    version="1.0",
+    version="1.1",
     system="""You are helping a job applicant answer application questions authentically and professionally.
-Your answers must be truthful, concise, and directly relevant to the question.
+Your answers must be truthful, concise, and directly relevant to the question, based only on the
+candidate profile provided. If the profile doesn't contain enough information to answer confidently,
+give the most reasonable, honest answer a candidate with this background would give — do not invent
+specific facts (dates, employers, credentials) that aren't in the profile.
 Respond ONLY with the answer text — no preamble, no quotes, no explanation.""",
-    user_template="""Answer this application question on behalf of the candidate.
+    user_template="""Answer this job application question on behalf of the candidate.
 
 ## Candidate Profile Summary
-{profile_summary}
+{profile}
 
 ## Question
 {question}
 
-## Context
-- Company: {company}
-- Role: {job_title}
-- Question Type: {question_type}
-{options_context}
-
-Write a {tone} answer that directly addresses the question.
-Keep it under {max_words} words unless the question requires more detail.
+Write a concise, professional answer that directly addresses the question.
+Keep it under 150 words unless the question clearly requires more detail.
 Answer:""",
 )
 
@@ -292,18 +289,23 @@ def keyword_pre_score(
 
 FORM_EXTRACTION_PROMPT = PromptTemplate(
     name="form_extraction",
-    version="1.0",
+    version="1.1",
     system="""You are an autonomous job application agent executing inside a browser.
-Your task is to analyze an application form (provided as a screenshot and/or DOM inputs) and map the candidate's profile and resume data to the visible fields.
+Your task is to analyze an application form (using a vision summary of the screenshot AND the raw DOM inputs) and map the candidate's profile and resume data to the visible fields.
 You must return a JSON object matching the `ExtractedForm` schema.
 Instructions:
-1. Identify all visible fields. For dropdown/radio, read the options.
-2. Match them against the profile context. If a match is found, set `source="profile"`.
-3. If the answer is found in the resume context, set `source="resume"`.
-4. If the field is a custom screening question with no matching profile data (e.g. "Why do you want to work here?"), thoughtfully deduce or fabricate a professional, truthful-sounding answer consistent with the candidate's background. Set `source="fabricated"` and provide your `reasoning`.
-5. NEVER fabricate legally sensitive facts (work authorization, criminal history, disability, veteran status, or salary if explicit range). For these, fall back to "Prefer not to answer", or the profile's desired salary, and mark `source="profile"`.
-6. Use `previous_answers` to ensure consistency. If you fabricated an answer previously, reuse it.""",
+1. Use the vision summary to determine `page_type` (form/confirmation/error/login/upload) accurately — the DOM alone can be misleading (e.g. hidden/duplicate fields).
+2. Identify all visible fields. For dropdown/radio, read the options.
+3. Match them against the profile context. If a match is found, set `source="profile"`.
+4. If the answer is found in the resume context, set `source="resume"`.
+5. If the field is a custom screening question with no matching profile data, thoughtfully deduce or fabricate a professional, truthful-sounding answer consistent with the candidate's background. Set `source="fabricated"` and provide your `reasoning`.
+6. NEVER fabricate legally sensitive facts (work authorization, criminal history, disability, veteran status, or salary if explicit range). For these, fall back to "Prefer not to answer", or the profile's desired salary, and mark `source="profile"`.
+7. Use `previous_answers` to ensure consistency. If you fabricated an answer previously, reuse it.
+8. If the vision summary indicates this is NOT an application form (e.g. confirmation/error/login page), set `page_type` accordingly and return an empty `fields` list — do not invent fields.""",
     user_template="""Extract form data and generate answers for this application.
+
+## Vision Summary of Screenshot
+{vision_context}
 
 ## Candidate Profile
 Name: {name}

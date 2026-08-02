@@ -43,7 +43,7 @@ class ApplicationAgent:
             result = await db.execute(
                 select(JobListing)
                 .where(
-                    JobListing.status == 'discovered',
+                    JobListing.status == 'queued',
                     JobListing.relevance_score >= self.settings.discovery.min_relevance_score
                 )
                 .limit(self.settings.application.daily_limit)
@@ -90,31 +90,36 @@ class ApplicationAgent:
             await db.commit()
             return
 
-        # 2. Take initial screenshot
         screenshot_path = await self.browser.take_screenshot(job.id, "1_initial_load")
 
-        # 3. Vision check: Is it an application form?
-        vision_prompt = "Is this page an online job application form? Does it have fields to fill? Answer 'YES' or 'NO'."
-        vision_res = await self.vision.analyze_screenshot(screenshot_path, vision_prompt)
+        # 4. Draft cover letter before touching the form
+        cover_letter_path = None
+        if self.profile.application_preferences.auto_generate_cover_letter:
+            cover_letter_path = await self.tailoring.draft_cover_letter(job, self.profile)
 
-        if "YES" not in vision_res.upper():
-            logger.warning(f"Vision model says this isn't an application form. (Response: {vision_res})")
+        # 5. One consolidated call: vision classification + DOM extraction + answers
+        form = await self._fill_form_with_llm(screenshot_path, job)
+
+        if form is None or form.page_type not in ("form", "upload"):
+            logger.warning(f"Page does not appear to be an application form (page_type={getattr(form, 'page_type', None)!r}).")
             if not self.settings.application.dry_run:
                 job.status = 'failed'
                 await db.commit()
                 return
 
-        # 4. Draft a tailored cover letter (if enabled) before touching the
-        # form, so it's ready to attach/paste if the form has that field.
-        cover_letter_path = None
-        if self.profile.application_preferences.auto_generate_cover_letter:
-            cover_letter_path = await self.tailoring.draft_cover_letter(job, self.profile)
-
-        # 5. Fill standard fields and fabricated fields using LLM
-        await self._fill_form_with_llm(screenshot_path, job)
         await self._upload_documents(job, cover_letter_path)
 
         screenshot_path_filled = await self.browser.take_screenshot(job.id, "2_form_filled")
+
+        # ── Fabrication review gate ──────────────────────
+        if not self._passes_fabrication_review(job):
+            logger.warning(
+                f"Fabricated answers for job {job.id} have not been reviewed "
+                f"(fabrication_review_required=true). Forcing dry-run for this application."
+            )
+            job.status = 'skipped'
+            await db.commit()
+            return
 
         if self.settings.application.dry_run:
             logger.info(f"DRY RUN: Skipping submit for {job.title}")
@@ -126,15 +131,33 @@ class ApplicationAgent:
             ).first
             if await submit_btn.count() > 0:
                 await submit_btn.click()
-                await asyncio.sleep(3)  # Wait for submission to process
+                import asyncio
+                await asyncio.sleep(3)
             else:
                 logger.warning("Submit button not found!")
             job.status = 'applied'
 
         await db.commit()
 
+    def _passes_fabrication_review(self, job: JobListing) -> bool:
+        """
+        Returns False if config requires a human review of fabricated answers
+        and that review hasn't happened yet. Always True if there's nothing
+        fabricated, or if the config flag is off, or if we're already in dry_run
+        (no point blocking a run that won't submit anyway).
+        """
+        review_required = getattr(self.settings.application, "fabrication_review_required", False)
+        if not review_required or self.settings.application.dry_run:
+            return True
+
+        if not self.fabrication_store.has_fabricated_fields(job.id):
+            return True  # nothing fabricated — nothing to review
+
+        return self.fabrication_store.is_reviewed(job.id)
+
     async def _fill_form_with_llm(self, screenshot_path: str, job: JobListing):
-        """Uses DOM scraping + LLM to dynamically fill form fields and answer custom questions."""
+        """Uses vision + DOM scraping + LLM to fill fields and answer custom questions.
+        Returns the ExtractedForm (or None if no fillable inputs were found)."""
         page = self.browser.page
         
         # 1. Scrape form inputs from the DOM
@@ -168,7 +191,7 @@ class ApplicationAgent:
         form_inputs = await page.evaluate(js_script)
         if not form_inputs:
             logger.info("No fillable form inputs found on page.")
-            return
+            return None
 
         import json
         
@@ -181,7 +204,6 @@ class ApplicationAgent:
             previous_answers=previous_answers
         )
         
-        # Save fabricated answers for audit trail
         self.fabrication_store.save(job, form)
 
         # 5. Execute Fills
@@ -220,6 +242,8 @@ class ApplicationAgent:
                     logger.warning(f"Failed to fill {selector_attr}: {e}")
             else:
                 logger.warning(f"Could not find element for selector: {selector_attr}")
+                
+        return form
 
     async def _upload_documents(self, job: JobListing, cover_letter_path) -> None:
         """

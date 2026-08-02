@@ -46,6 +46,7 @@ async def main() -> None:
     # Load profile
     profile = load_profile(settings.profile.path)
     logger.info("✓ Profile loaded — {}", profile.personal.name)
+    logger.info("locations_ok = {}", profile.preferences.locations_ok)
 
     # Run discovery using run_discovery() for proper stats
     async with get_session(settings.storage.database_url) as db:

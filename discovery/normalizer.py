@@ -93,9 +93,13 @@ def compute_url_hash(url: str) -> str:
 # Remote detection
 # ──────────────────────────────────────────────────────────────────────────────
 
+# Strong, low-ambiguity remote phrases only — dropped "distributed" and
+# "anywhere" (bare) because they false-positive on things like "distributed
+# systems experience" or "work with people anywhere in the org".
 _REMOTE_KEYWORDS = {
-    "remote", "work from home", "wfh", "distributed", "anywhere",
-    "fully remote", "100% remote", "remote-first",
+    "remote", "work from home", "wfh",
+    "fully remote", "100% remote", "remote-first", "remote first",
+    "work from anywhere",
 }
 
 
@@ -103,8 +107,16 @@ def detect_remote(raw: RawJob) -> bool:
     """Infer whether a job is remote from its fields."""
     if raw.remote:
         return True
-    combined = (raw.location + " " + raw.title + " " + raw.description[:500]).lower()
-    return any(kw in combined for kw in _REMOTE_KEYWORDS)
+
+    # Location and title are high-signal; description is noisy, so only
+    # check a short prefix and require a strong phrase, not bare words.
+    location_and_title = (raw.location + " " + raw.title).lower()
+    if any(kw in location_and_title for kw in _REMOTE_KEYWORDS):
+        return True
+
+    description_snippet = raw.description[:300].lower()
+    strong_phrases = {"fully remote", "100% remote", "remote-first", "remote first", "work from anywhere"}
+    return any(kw in description_snippet for kw in strong_phrases)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -124,37 +136,40 @@ def matches_target_locations(
     require_india_or_remote: bool = True,
 ) -> bool:
     """
-    Return True if the job's location is acceptable — i.e. it's remote,
-    or it mentions one of the target locations (default: India-based
-    locations from profile.preferences.locations_ok).
-
-    This runs BEFORE LLM scoring to avoid wasting LLM calls on jobs
-    that are geographically disqualified regardless of relevance.
+    Return True if the job's location is acceptable.
+    Strictly enforces that jobs must be based in India or truly global remote.
+    Blocks any job mentioning foreign regions in the title or location, even
+    if flagged as remote by the ATS.
     """
-    if job.remote:
-        # Check if it's geo-restricted (e.g. "Remote - US")
-        location_text = (job.location or "").lower()
-        if location_text:
-            geo_restrictions = ["us", "united states", "uk", "united kingdom", "eu", "europe", "canada", "north america"]
-            for restriction in geo_restrictions:
-                # Check for word boundary to avoid matching "cyprus" for "us"
-                if re.search(r'\b' + re.escape(restriction) + r'\b', location_text):
-                    # Is this restricted location in the user's allowed locations?
-                    allowed = any(restriction == loc.lower() or restriction in loc.lower() for loc in locations_ok)
-                    if not allowed:
-                        return False
+    location_and_title = f"{job.location or ''} {job.title}".lower()
+
+    # 1. Strict blocklist for non-India regions in BOTH title and location
+    geo_restrictions = [
+        "us", "united states", "usa", "uk", "united kingdom", "eu", "europe", 
+        "canada", "north america", "emea", "latam", "americas", "apac", 
+        "australia", "singapore", "germany", "france", "ireland", "dublin",
+        "london", "new york", "san francisco", "seattle", "remote - us", "remote us"
+    ]
+    
+    for restriction in geo_restrictions:
+        if re.search(r'\b' + re.escape(restriction) + r'\b', location_and_title):
+            # Block unless this specific restriction was explicitly allowed by the user
+            allowed = any(restriction == loc.lower() or restriction in loc.lower() for loc in locations_ok)
+            if not allowed:
+                return False
+
+    # 2. Check for India keywords (pass automatically)
+    has_india = any(kw in location_and_title for kw in _INDIA_KEYWORDS)
+    for loc in locations_ok:
+        if loc.lower() != "remote" and loc.lower() in location_and_title:
+            has_india = True
+            
+    if has_india:
         return True
 
-    location_text = (job.location or "").lower()
-
-    # Match against profile's explicit locations_ok list
-    for loc in locations_ok:
-        if loc.lower() != "remote" and loc.lower() in location_text:
-            return True
-
-    # Fallback: broad India keyword match (catches cities not in the profile list)
-    if require_india_or_remote:
-        return any(kw in location_text for kw in _INDIA_KEYWORDS)
+    # 3. If it's remote, allow it only because it survived the strict blocklist above
+    if job.remote:
+        return True
 
     return False
 

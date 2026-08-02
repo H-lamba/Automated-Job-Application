@@ -22,7 +22,7 @@ class FabricationStore:
                 pass
         return answers
 
-    def save(self, job: JobListing, form: ExtractedForm) -> Path:
+    def save(self, job: JobListing, form: ExtractedForm) -> Path | None:
         fabricated_only = [f for f in form.fields if f.source == "fabricated"]
         if not fabricated_only:
             return None
@@ -37,3 +37,21 @@ class FabricationStore:
         path = self.base_dir / f"{job.id}.json"
         path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
         return path
+
+    def has_fabricated_fields(self, job_id: str) -> bool:
+        """True if a fabrication file exists for this job (i.e. review may be needed)."""
+        return (self.base_dir / f"{job_id}.json").exists()
+
+    def is_reviewed(self, job_id: str) -> bool:
+        """
+        A human marks a job as reviewed by creating a `{job_id}.reviewed` file
+        next to the fabrication log (e.g. `touch data/fabricated/<id>.reviewed`
+        after reading `<id>.json`).
+        """
+        return (self.base_dir / f"{job_id}.reviewed").exists()
+
+    def mark_reviewed(self, job_id: str) -> None:
+        """Convenience helper — could be exposed via a CLI/API endpoint later."""
+        (self.base_dir / f"{job_id}.reviewed").write_text(
+            datetime.now(timezone.utc).isoformat(), encoding="utf-8"
+        )

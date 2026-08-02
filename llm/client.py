@@ -200,8 +200,7 @@ class OllamaClient:
                     messages=full_messages,
                     options={
                         "temperature": temperature,
-                        "num_ctx": 4096,      # Explicit context window — prevents OOM/empty responses
-                        "num_predict": 512,   # Cap output tokens for scoring (we only need ~100)
+                        "num_ctx": 16384,     # Increased to allow large vision inputs (screenshots)
                     },
                     think=think,
                     format=format or "",
@@ -249,18 +248,22 @@ class OllamaClient:
             model=model,
             temperature=temperature,
             system=system,
-            format="json",
+            format=None,  # Removed format="json" as llama.cpp grammar often crashes Qwen3 if it outputs markdown first
             think=think,
             timeout=timeout or self.scoring_timeout,
         )
         try:
             return json.loads(raw)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
             import re
             match = re.search(r"\{.*\}", raw, re.DOTALL)
             if match:
-                return json.loads(match.group())
-            raise
+                try:
+                    return json.loads(match.group())
+                except json.JSONDecodeError:
+                    pass
+            logger.error(f"Failed to parse JSON from LLM. Raw output was:\n{raw}")
+            raise e
 
     async def chat_stream(
         self,

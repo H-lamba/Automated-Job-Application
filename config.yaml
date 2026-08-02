@@ -9,15 +9,15 @@
 # LLM Settings
 # ──────────────────────────────────────────────────────────
 llm:
-  provider: "gemini"    # "gemini" | "ollama"
+  provider: "ollama"    # "gemini" | "ollama"
   
   # Base URL for Ollama API (used only if provider="ollama")
   ollama_base_url: "http://127.0.0.1:11434"
 
   # Core reasoning model
-  reasoning_model: "gemini-3.5-flash"
-  vision_model: "gemini-3.5-flash"
-  vision_backend: "gemini"   # Not used if provider="gemini"
+  reasoning_model: "qwen3-vl:8b"
+  vision_model: "qwen3-vl:8b"
+  vision_backend: "ollama"   # "ollama" | "mlx"
 
   # Request timeout in seconds
   timeout: 120
