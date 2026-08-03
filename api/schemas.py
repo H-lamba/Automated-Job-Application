@@ -12,7 +12,6 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ──────────────────────────────────────────────────────────────────────────────
 # Shared
 # ──────────────────────────────────────────────────────────────────────────────
@@ -114,6 +113,14 @@ class ApplicationListResponse(BaseModel):
 class TriggerApplicationRequest(BaseModel):
     job_id: str
     dry_run: bool = True
+
+
+class ApplicationTriggerResponse(BaseModel):
+    """Result of POST /applications/trigger."""
+
+    success: bool
+    dry_run: bool
+    jobs_processed: int = 0
 
 
 # ──────────────────────────────────────────────────────────────────────────────

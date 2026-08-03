@@ -17,7 +17,6 @@ Flow:
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
 
 import httpx
 from sqlalchemy import select
@@ -25,7 +24,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.base_agent import (
     ActionResult,
-    AgentResult,
     BaseAgent,
     Observation,
     Plan,
@@ -37,10 +35,10 @@ from discovery.ashby_api import AshbyAPISource
 from discovery.base_source import JobSource, RawJob
 from discovery.greenhouse_api import GreenhouseAPISource
 from discovery.lever_api import LeverAPISource
-from discovery.normalizer import JobNormalizer
+from discovery.normalizer import JobNormalizer, matches_target_locations
 from llm.client import OllamaClient
 from llm.prompts import SCORE_JOB_PROMPT, keyword_pre_score
-from llm.response_parser import parse_job_score
+from llm.response_parser import JobScoreResponse, parse_job_score
 from models.job import JobListing, JobStatus
 from models.profile import UserProfile
 
@@ -177,8 +175,8 @@ class DiscoveryAgent(BaseAgent):
             results = await asyncio.gather(*fetch_tasks, return_exceptions=True)
 
             total_raw = 0
-            for source, result in zip(sources, results):
-                if isinstance(result, Exception):
+            for source, result in zip(sources, results, strict=True):
+                if isinstance(result, BaseException):
                     logger.error("Source [{}] raised: {}", source.name, result)
                 else:
                     self._raw_jobs.extend(result)
@@ -206,19 +204,27 @@ class DiscoveryAgent(BaseAgent):
         self._skipped_count = len(normalized) - len(new_jobs)
 
         # ── Location filter — India or Remote only ──────────────────────────
-        from discovery.normalizer import matches_target_locations
-
         location_filtered: list[JobListing] = []
         location_rejected = 0
         for job in new_jobs:
-            passed_loc = matches_target_locations(job, self.profile.preferences.locations_ok)
-            logger.info("LOCFILTER job='{}' loc='{}' remote={} passed={}", job.title, job.location, job.remote, passed_loc)
-            
+            passed_loc = matches_target_locations(
+                job, self.profile.preferences.locations_ok
+            )
+            logger.info(
+                "LOCFILTER job='{}' loc='{}' remote={} passed={}",
+                job.title,
+                job.location,
+                job.remote,
+                passed_loc,
+            )
+
             if passed_loc:
                 location_filtered.append(job)
             else:
                 job.status = JobStatus.SKIPPED.value
-                job.score_reasoning = f"Location filter: '{job.location}' not in India/Remote"
+                job.score_reasoning = (
+                    f"Location filter: '{job.location}' not in India/Remote"
+                )
                 location_rejected += 1
 
         self._skipped_count += location_rejected
@@ -272,12 +278,12 @@ class DiscoveryAgent(BaseAgent):
             self._scored_count = 0
             return ActionResult(success=True, data={"scored": 0}, action="score")
 
-        batch_size = self.settings.discovery.llm_score_batch_size
         max_jobs = self.settings.discovery.max_jobs_per_run
         jobs_to_score = self._new_jobs[:max_jobs]
 
         logger.info(
-            "Scoring {} jobs sequentially with LLM (Ollama n_slots=1 — parallel is counterproductive)",
+            "Scoring {} jobs sequentially with LLM "
+            "(Ollama n_slots=1 — parallel is counterproductive)",
             len(jobs_to_score),
         )
 
@@ -314,6 +320,7 @@ class DiscoveryAgent(BaseAgent):
                 system=system,
                 temperature=self.settings.llm.scoring_temperature,
                 think=False,   # Disable qwen3 chain-of-thought for speed
+                schema=JobScoreResponse.model_json_schema()
             )
             score = parse_job_score(raw)
 

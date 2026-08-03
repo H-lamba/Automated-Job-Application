@@ -5,11 +5,13 @@ api/routes/jobs.py — Job listing endpoints.
 from __future__ import annotations
 
 import math
+from profile.loader import load_profile
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import func, select
 
+from agents.discovery_agent import DiscoveryAgent
 from api.schemas import (
     JobDiscoverRequest,
     JobDiscoverResponse,
@@ -21,28 +23,25 @@ from api.schemas import (
 from core.config import Settings, settings_dep
 from core.database import get_session
 from core.logger import logger
+from llm.client import OllamaClient
 from models.job import JobListing, JobStatus
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
 
-
-def _db_dep(settings: Settings = Depends(settings_dep)):
-    return get_db(settings.storage.database_url)
+SettingsDep = Annotated[Settings, Depends(settings_dep)]
 
 
 @router.get("", response_model=JobListResponse)
 async def list_jobs(
+    settings: SettingsDep,
     status: str | None = Query(None, description="Filter by status"),
     min_score: float = Query(0.0, ge=0, le=100),
     company: str | None = Query(None),
     remote_only: bool = Query(False),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    settings: Settings = Depends(settings_dep),
 ):
-    """
-    List job listings with optional filters and pagination.
-    """
+    """List job listings with optional filters and pagination."""
     async with get_session(settings.storage.database_url) as db:
         query = select(JobListing)
 
@@ -53,7 +52,7 @@ async def list_jobs(
         if company:
             query = query.where(JobListing.company.ilike(f"%{company}%"))
         if remote_only:
-            query = query.where(JobListing.remote == True)
+            query = query.where(JobListing.remote.is_(True))
 
         # Total count
         count_query = select(func.count()).select_from(query.subquery())
@@ -82,7 +81,7 @@ async def list_jobs(
 
 
 @router.get("/{job_id}", response_model=JobListingResponse)
-async def get_job(job_id: str, settings: Settings = Depends(settings_dep)):
+async def get_job(job_id: str, settings: SettingsDep):
     """Get a single job listing by ID."""
     async with get_session(settings.storage.database_url) as db:
         result = await db.execute(select(JobListing).where(JobListing.id == job_id))
@@ -98,7 +97,7 @@ async def get_job(job_id: str, settings: Settings = Depends(settings_dep)):
 async def update_job_status(
     job_id: str,
     body: JobStatusUpdateRequest,
-    settings: Settings = Depends(settings_dep),
+    settings: SettingsDep,
 ):
     """Manually update a job's status."""
     valid_statuses = {s.value for s in JobStatus}
@@ -125,7 +124,7 @@ async def update_job_status(
 @router.post("/discover", response_model=JobDiscoverResponse)
 async def trigger_discovery(
     body: JobDiscoverRequest,
-    settings: Settings = Depends(settings_dep),
+    settings: SettingsDep,
 ):
     """
     Trigger a full job discovery run.
@@ -133,10 +132,6 @@ async def trigger_discovery(
     This is an async operation that runs the DiscoveryAgent pipeline:
     fetch → normalize → score → save.
     """
-    from agents.discovery_agent import DiscoveryAgent
-    from llm.client import OllamaClient
-    from profile.loader import load_profile
-
     try:
         profile = load_profile(settings.profile.path)
         llm_client = OllamaClient.from_settings(settings)
@@ -154,4 +149,4 @@ async def trigger_discovery(
 
     except Exception as e:
         logger.exception("Discovery run failed: {}", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

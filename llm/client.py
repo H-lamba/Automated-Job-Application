@@ -14,20 +14,15 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import re
+from collections.abc import AsyncGenerator
 from pathlib import Path
-from typing import Any, AsyncGenerator
+from typing import Any
 
 import ollama
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
 
 from core.exceptions import LLMConnectionError, LLMTimeoutError
 from core.logger import logger
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # MLX Vision helper (lazy import — only on Apple Silicon when needed)
@@ -42,10 +37,9 @@ def _mlx_generate(model_path: str, prompt: str, image_path: str | None = None) -
     MLX is not async-native, so we keep it in a thread.
     """
     try:
-        from mlx_lm import load, generate
-        from mlx_lm.utils import load as load_model
+        from mlx_lm import generate, load
 
-        model, tokenizer = load(model_path)
+        model, tokenizer = load(model_path)  # type: ignore[misc]
         response = generate(
             model,
             tokenizer,
@@ -54,11 +48,11 @@ def _mlx_generate(model_path: str, prompt: str, image_path: str | None = None) -
             verbose=False,
         )
         return response
-    except ImportError:
+    except ImportError as e:
         raise LLMConnectionError(
             "mlx_lm is not installed. Install with: pip install mlx-lm",
             context={"model": model_path},
-        )
+        ) from e
     except Exception as e:
         raise LLMConnectionError(
             f"MLX generation failed: {e}",
@@ -73,10 +67,9 @@ def _mlx_vision_generate(model_path: str, prompt: str, image_path: str) -> str:
     Gemma 4 supports interleaved image+text via the chat format.
     """
     try:
-        from mlx_lm import load, generate
-        import mlx.core as mx
+        from mlx_lm import generate, load
 
-        model, tokenizer = load(model_path)
+        model, tokenizer = load(model_path)  # type: ignore[misc]
 
         # Build prompt with image tag if tokenizer supports it
         if hasattr(tokenizer, "apply_chat_template"):
@@ -109,11 +102,11 @@ def _mlx_vision_generate(model_path: str, prompt: str, image_path: str) -> str:
             verbose=False,
         )
         return response
-    except ImportError:
+    except ImportError as e:
         raise LLMConnectionError(
             "mlx_lm is not installed. Install with: pip install mlx-lm",
             context={"model": model_path},
-        )
+        ) from e
     except Exception as e:
         raise LLMConnectionError(
             f"MLX vision generation failed: {e}",
@@ -163,9 +156,10 @@ class OllamaClient:
         model: str | None = None,
         temperature: float = 0.1,
         system: str | None = None,
-        format: str | None = None,   # "json" for structured output
+        format: str | dict[str, Any] | None = None,  # "json" or a JSON-Schema dict
         think: bool = False,         # Disable qwen3 chain-of-thought for speed
         timeout: int | None = None,  # Override per-call timeout
+        options: dict[str, Any] | None = None,  # Additional Ollama options
     ) -> str:
         """
         Send a chat request to Ollama and return the response as a string.
@@ -193,17 +187,27 @@ class OllamaClient:
         )
 
         effective_timeout = timeout or self.timeout
+        
+        merged_options = {
+            "temperature": temperature,
+            "num_ctx": 16384,     # Increased to allow large vision inputs (screenshots)
+        }
+        if options:
+            merged_options.update(options)
+
+        # Ollama accepts either "json" or a JSON-Schema dict. Empty/None means no format constraint.
+        ollama_format: str | dict[str, Any] | None = (
+            None if format is None or format == "" else format
+        )
+
         try:
             response = await asyncio.wait_for(
                 self._client.chat(
                     model=target_model,
                     messages=full_messages,
-                    options={
-                        "temperature": temperature,
-                        "num_ctx": 16384,     # Increased to allow large vision inputs (screenshots)
-                    },
+                    options=merged_options,
                     think=think,
-                    format=format or "",
+                    format=ollama_format,  # type: ignore[arg-type]
                 ),
                 timeout=effective_timeout,
             )
@@ -211,7 +215,7 @@ class OllamaClient:
             logger.debug("LLM response received — length={}", len(content))
             return content
 
-        except asyncio.TimeoutError as e:
+        except TimeoutError as e:
             raise LLMTimeoutError(
                 f"Ollama request timed out after {effective_timeout}s",
                 context={"model": target_model},
@@ -236,6 +240,7 @@ class OllamaClient:
         system: str | None = None,
         think: bool = False,
         timeout: int | None = None,
+        schema: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Like chat(), but parses the response as JSON.
@@ -243,23 +248,31 @@ class OllamaClient:
         Passes format="json" to Ollama so qwen3:8b is constrained to
         produce valid JSON. Uses scoring_timeout by default (longer wait).
         """
+        # Force the model to start with { to prevent markdown backticks where possible
+        strict_system = (
+            (system or "")
+            + "\n\nCRITICAL: You must output ONLY valid JSON. "
+            "Start your response immediately with the '{' character. "
+            "Do NOT wrap your response in ```json markdown blocks."
+        )
+
         raw = await self.chat(
             messages,
             model=model,
             temperature=temperature,
-            system=system,
-            format=None,  # Removed format="json" as llama.cpp grammar often crashes Qwen3 if it outputs markdown first
+            system=strict_system,
+            format=schema if schema else None,  # Pass JSON Schema to Ollama
             think=think,
             timeout=timeout or self.scoring_timeout,
+            options={"num_predict": 4096},  # Cap generation
         )
         try:
-            return json.loads(raw)
+            return json.loads(raw, strict=False)
         except json.JSONDecodeError as e:
-            import re
             match = re.search(r"\{.*\}", raw, re.DOTALL)
             if match:
                 try:
-                    return json.loads(match.group())
+                    return json.loads(match.group(), strict=False)
                 except json.JSONDecodeError:
                     pass
             logger.error(f"Failed to parse JSON from LLM. Raw output was:\n{raw}")
@@ -375,7 +388,7 @@ class OllamaClient:
             models_response = await asyncio.wait_for(
                 self._client.list(), timeout=10
             )
-            available = [m.model for m in models_response.models]
+            available: list[str] = [m.model or "" for m in models_response.models]
             reasoning_ok = any(self.reasoning_model in m for m in available)
 
             if not reasoning_ok:

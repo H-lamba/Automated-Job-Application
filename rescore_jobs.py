@@ -13,26 +13,29 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from profile.loader import load_profile
 
-from sqlalchemy import select, or_, func
+from sqlalchemy import func, or_, select
 
 from core.config import get_settings
-from core.database import init_db, get_session
+from core.database import get_session, init_db
 from core.exceptions import LLMParseError
 from core.logger import logger, setup_logging
 from llm.client import OllamaClient
 from llm.prompts import SCORE_JOB_PROMPT, keyword_pre_score
-from llm.response_parser import parse_job_score
+from llm.response_parser import JobScoreResponse, parse_job_score
 from models.job import JobListing, JobStatus
-from profile.loader import load_profile
 
 
 async def score_job(job: JobListing, llm: OllamaClient, profile, settings) -> bool:
     """Score a single job in-place. Returns True if scored successfully."""
     try:
         # Keyword pre-filter with blocklist (fast, no LLM)
-        tech_skills = profile.skills_summary().split(", ") if hasattr(profile, "skills_summary") else []
+        if hasattr(profile, "skills_summary"):
+            tech_skills = profile.skills_summary().split(", ")
+        else:
+            tech_skills = []
         pre = keyword_pre_score(
             job_title=job.title or "",
             job_description=(job.description or "")[:500],
@@ -66,6 +69,7 @@ async def score_job(job: JobListing, llm: OllamaClient, profile, settings) -> bo
             system=system,
             temperature=settings.llm.scoring_temperature,
             think=False,
+            schema=JobScoreResponse.model_json_schema()
         )
         score = parse_job_score(raw)
 
@@ -104,15 +108,23 @@ async def main() -> None:
         sys.exit(1)
 
     profile = load_profile(settings.profile.path)
-    logger.info("✓ Profile: {} | {} target roles", profile.personal.name, len(profile.preferences.target_roles))
+    logger.info(
+        "✓ Profile: {} | {} target roles",
+        profile.personal.name,
+        len(profile.preferences.target_roles),
+    )
 
     async with get_session(settings.storage.database_url) as db:
         # Count unscored
         total_unscored = (await db.execute(
             select(func.count()).select_from(JobListing)
             .where(or_(JobListing.relevance_score.is_(None), JobListing.relevance_score == 0))
-        )).scalar()
-        logger.info("Unscored jobs in DB: {} | Will process: {}", total_unscored, min(total_unscored, limit))
+        )).scalar() or 0
+        logger.info(
+            "Unscored jobs in DB: {} | Will process: {}",
+            total_unscored,
+            min(total_unscored, limit),
+        )
 
         # Fetch batch — prioritise jobs from companies likely to have engineering roles
         res = await db.execute(
@@ -132,7 +144,7 @@ async def main() -> None:
     relevant = 0
     save_interval = 50  # Commit every 50 jobs
 
-    start = datetime.now(timezone.utc)
+    start = datetime.now(UTC)
 
     async with get_session(settings.storage.database_url) as db:
         # Re-attach jobs to this session
@@ -146,7 +158,13 @@ async def main() -> None:
 
         for i, job in enumerate(db_jobs, 1):
             passed_loc = matches_target_locations(job, profile.preferences.locations_ok)
-            logger.info("LOCFILTER job='{}' loc='{}' remote={} passed={}", job.title, job.location, job.remote, passed_loc)
+            logger.info(
+                "LOCFILTER job='{}' loc='{}' remote={} passed={}",
+                job.title,
+                job.location,
+                job.remote,
+                passed_loc,
+            )
             
             if not passed_loc:
                 job.relevance_score = 0.0
@@ -195,7 +213,7 @@ async def main() -> None:
             # Periodic commit
             if i % save_interval == 0:
                 await db.commit()
-                elapsed = (datetime.now(timezone.utc) - start).total_seconds()
+                elapsed = (datetime.now(UTC) - start).total_seconds()
                 rate = i / elapsed * 60
                 logger.info(
                     "Progress {}/{} | scored={} skipped={} relevant={} | {:.0f} jobs/min",
@@ -204,7 +222,7 @@ async def main() -> None:
 
         await db.commit()
 
-    elapsed = (datetime.now(timezone.utc) - start).total_seconds()
+    elapsed = (datetime.now(UTC) - start).total_seconds()
     logger.info("=" * 60)
     logger.info("✅ Rescore complete!")
     logger.info("   LLM scored  : {}", scored)

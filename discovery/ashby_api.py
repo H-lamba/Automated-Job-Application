@@ -9,7 +9,8 @@ Returns all published job postings for a company.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import contextlib
+from datetime import datetime
 
 import httpx
 
@@ -96,12 +97,10 @@ class AshbyAPISource(JobSource):
         posted_at = None
         published_date = data.get("publishedDate") or data.get("updatedAt")
         if published_date:
-            try:
+            with contextlib.suppress(ValueError, AttributeError):
                 posted_at = datetime.fromisoformat(
                     published_date.replace("Z", "+00:00")
                 )
-            except (ValueError, AttributeError):
-                pass
 
         # Application URL
         job_id = data.get("id", "")

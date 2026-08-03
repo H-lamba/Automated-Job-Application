@@ -12,13 +12,12 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ValidationError
 
 from core.exceptions import LLMParseError
 from core.logger import logger
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Typed response models
@@ -37,7 +36,7 @@ class JobScoreResponse(BaseModel):
     reasoning: str
     missing_skills: list[str] = []
 
-    def clamp(self) -> "JobScoreResponse":
+    def clamp(self) -> JobScoreResponse:
         """Clamp all score fields to [0, 100]."""
         return self.model_copy(
             update={
@@ -58,7 +57,6 @@ class PlannerResponse(BaseModel):
     args: dict[str, Any] = {}
     final_answer: str | None = None
 
-from typing import Literal
 
 class ExtractedFormField(BaseModel):
     field_id: str            # a stable synthetic id (label+index) so we can map back to DOM
@@ -117,7 +115,7 @@ def extract_json(text: str) -> dict[str, Any]:
 
     # Try 1: parse as-is
     try:
-        return json.loads(text)
+        return json.loads(text, strict=False)
     except json.JSONDecodeError:
         pass
 
@@ -125,7 +123,7 @@ def extract_json(text: str) -> dict[str, Any]:
     fence_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
     if fence_match:
         try:
-            return json.loads(fence_match.group(1))
+            return json.loads(fence_match.group(1), strict=False)
         except json.JSONDecodeError:
             pass
 
@@ -133,7 +131,7 @@ def extract_json(text: str) -> dict[str, Any]:
     brace_match = re.search(r"\{.*\}", text, re.DOTALL)
     if brace_match:
         try:
-            return json.loads(brace_match.group())
+            return json.loads(brace_match.group(), strict=False)
         except json.JSONDecodeError:
             pass
 

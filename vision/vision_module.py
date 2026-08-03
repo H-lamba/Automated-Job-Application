@@ -1,6 +1,7 @@
-from core.logger import logger
 from core.config import get_settings
+from core.logger import logger
 from llm.client import OllamaClient
+
 
 class VisionModule:
     def __init__(self):

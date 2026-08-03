@@ -1,8 +1,10 @@
 import json
+from datetime import UTC, datetime
 from pathlib import Path
-from datetime import datetime, timezone
-from models.job import JobListing
+
 from llm.response_parser import ExtractedForm
+from models.job import JobListing
+
 
 class FabricationStore:
     def __init__(self, base_dir: str = "./data/fabricated"):
@@ -31,7 +33,7 @@ class FabricationStore:
             "job_id": job.id,
             "company": job.company,
             "title": job.title,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "fields": [f.model_dump() for f in fabricated_only],
         }
         path = self.base_dir / f"{job.id}.json"
@@ -53,5 +55,5 @@ class FabricationStore:
     def mark_reviewed(self, job_id: str) -> None:
         """Convenience helper — could be exposed via a CLI/API endpoint later."""
         (self.base_dir / f"{job_id}.reviewed").write_text(
-            datetime.now(timezone.utc).isoformat(), encoding="utf-8"
+            datetime.now(UTC).isoformat(), encoding="utf-8"
         )

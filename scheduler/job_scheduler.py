@@ -11,6 +11,8 @@ cleanly with FastAPI's async event loop.
 
 from __future__ import annotations
 
+from datetime import UTC
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
@@ -23,17 +25,18 @@ _scheduler: AsyncIOScheduler | None = None
 
 async def _run_discovery(settings: Settings) -> None:
     """Scheduled discovery task."""
+    from profile.loader import load_profile
+
     from agents.discovery_agent import DiscoveryAgent
     from core.database import get_db
     from llm.client import OllamaClient
-    from profile.loader import load_profile
 
     logger.info("Scheduler: starting discovery run")
     try:
         profile = load_profile(settings.profile.path)
         llm_client = OllamaClient.from_settings(settings)
 
-        async with get_db(settings.storage.database_url) as db:
+        async with get_db(settings.storage.database_url) as db:  # type: ignore[attr-defined]
             agent = DiscoveryAgent(
                 settings=settings,
                 db=db,
@@ -49,24 +52,28 @@ async def _run_discovery(settings: Settings) -> None:
 async def _run_cleanup(settings: Settings) -> None:
     """Clean up old screenshots."""
     import shutil
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
     from pathlib import Path
 
     logger.info("Scheduler: running screenshot cleanup")
     screenshots_dir = Path(settings.storage.screenshots_dir)
     retention_days = settings.scheduler.screenshot_retention_days
-    cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
+    cutoff = datetime.now(UTC) - timedelta(days=retention_days)
 
     removed = 0
     if screenshots_dir.exists():
         for item in screenshots_dir.iterdir():
             if item.is_dir():
-                mtime = datetime.fromtimestamp(item.stat().st_mtime, tz=timezone.utc)
+                mtime = datetime.fromtimestamp(item.stat().st_mtime, tz=UTC)
                 if mtime < cutoff:
                     shutil.rmtree(item)
                     removed += 1
 
-    logger.info("Cleanup: removed {} screenshot directories older than {} days", removed, retention_days)
+    logger.info(
+        "Cleanup: removed {} screenshot directories older than {} days",
+        removed,
+        retention_days,
+    )
 
 
 def create_scheduler(settings: Settings) -> AsyncIOScheduler:

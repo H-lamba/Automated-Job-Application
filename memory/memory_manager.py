@@ -39,14 +39,14 @@ class MemoryManager:
     ) -> None:
         self.db = db
         self._chroma_path = chroma_path
-        self._chroma_client: chromadb.Client | None = None
-        self._job_collection = None
+        self._chroma_client: Any = None
+        self._job_collection: Any = None
 
     # ──────────────────────────────────────────────────────────────────────────
     # ChromaDB initialisation (lazy)
     # ──────────────────────────────────────────────────────────────────────────
 
-    def _get_chroma_client(self) -> chromadb.Client:
+    def _get_chroma_client(self) -> Any:
         if self._chroma_client is None:
             Path(self._chroma_path).mkdir(parents=True, exist_ok=True)
             self._chroma_client = chromadb.PersistentClient(
@@ -168,6 +168,7 @@ class MemoryManager:
             for meta, distance in zip(
                 results["metadatas"][0],
                 results["distances"][0],
+                strict=True,
             ):
                 jobs.append({**meta, "similarity": 1.0 - distance})
             return jobs

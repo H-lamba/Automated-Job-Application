@@ -10,7 +10,8 @@ No API key required. Rate limits are generous for read operations.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import contextlib
+from datetime import datetime
 
 import httpx
 
@@ -86,7 +87,10 @@ class GreenhouseAPISource(JobSource):
         """Convert a single Greenhouse job dict into a RawJob."""
         # Location: Greenhouse may have multiple offices
         offices = data.get("offices", [])
-        location = offices[0].get("name", "") if offices else data.get("location", {}).get("name", "")
+        if offices:
+            location = offices[0].get("name", "")
+        else:
+            location = data.get("location", {}).get("name", "")
 
         # Salary — Greenhouse doesn't always include this
         salary_min = salary_max = None
@@ -99,19 +103,23 @@ class GreenhouseAPISource(JobSource):
         posted_at = None
         updated_at_str = data.get("updated_at") or data.get("created_at")
         if updated_at_str:
-            try:
+            with contextlib.suppress(ValueError, AttributeError):
                 posted_at = datetime.fromisoformat(
                     updated_at_str.replace("Z", "+00:00")
                 )
-            except (ValueError, AttributeError):
-                pass
 
         # Build application URL
         # Greenhouse jobs link directly to the apply page
         absolute_url = data.get("absolute_url", "")
-        
+
         # Get content (full description)
         content = data.get("content", "")
+
+        departments = data.get("departments") or []
+        department = departments[0].get("name", "") if departments else ""
+
+        title_lower = (data.get("title") or "").lower()
+        remote = "remote" in location.lower() or "remote" in title_lower
 
         return RawJob(
             title=data.get("title", "Unknown Title"),
@@ -121,14 +129,14 @@ class GreenhouseAPISource(JobSource):
             source_job_id=str(data.get("id", "")),
             company_slug=slug,
             location=location,
-            remote="remote" in location.lower() or "remote" in data.get("title", "").lower(),
+            remote=remote,
             description=content,
             requirements="",
             salary_min=salary_min,
             salary_max=salary_max,
             posted_at=posted_at,
             job_post_url=absolute_url,
-            department=data.get("departments", [{}])[0].get("name", "") if data.get("departments") else "",
+            department=department,
             raw=data,
         )
 

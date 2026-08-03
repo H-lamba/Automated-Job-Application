@@ -23,7 +23,6 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 from api.routes import applications, documents, jobs
 from api.schemas import HealthResponse, StatsResponse
@@ -49,7 +48,11 @@ async def lifespan(app: FastAPI):
     logger.info("=" * 60)
     logger.info("  Autonomous Career Agent — starting up")
     logger.info("  Reasoning model : {}", settings.llm.reasoning_model)
-    logger.info("  Vision model    : {} ({})", settings.llm.vision_model, settings.llm.vision_backend)
+    logger.info(
+        "  Vision model    : {} ({})",
+        settings.llm.vision_model,
+        settings.llm.vision_backend,
+    )
     logger.info("  Dry run         : {}", settings.application.dry_run)
     logger.info("=" * 60)
 
@@ -183,8 +186,8 @@ async def health():
 async def stats():
     """Return aggregate statistics about all job applications."""
     settings = get_settings()
+
     from core.database import get_session
-    from sqlalchemy.ext.asyncio import AsyncSession
     async with get_session(settings.storage.database_url) as db:
         memory = MemoryManager(db=db, chroma_path=settings.storage.chroma_path)
         application_stats = await memory.get_application_stats()

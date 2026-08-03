@@ -1,8 +1,9 @@
-from core.logger import logger
+from profile.loader import load_profile
+
 from core.config import get_settings
+from core.logger import logger
 from llm.client import OllamaClient
 from llm.prompts import ANSWER_QUESTION_PROMPT
-from profile.loader import load_profile
 
 
 class ApplicationQA:
@@ -12,7 +13,7 @@ class ApplicationQA:
         self.client = OllamaClient.from_settings(self.settings)
 
     async def answer_question(self, question: str) -> str:
-        """Uses the configured LLM to answer a job application question based on the user's profile."""
+        """Answer a job application question based on the user's profile."""
 
         profile_context = f"Name: {self.profile.personal.name}\n"
         profile_context += f"Email: {self.profile.personal.email}\n"

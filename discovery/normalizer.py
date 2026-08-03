@@ -11,10 +11,8 @@ Responsibilities:
 
 from __future__ import annotations
 
-import hashlib
 import html
 import re
-from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 import xxhash
@@ -22,7 +20,6 @@ import xxhash
 from core.logger import logger
 from discovery.base_source import RawJob
 from models.job import ATSType, JobListing, JobSource, JobStatus
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # ATS Detection
@@ -115,7 +112,13 @@ def detect_remote(raw: RawJob) -> bool:
         return True
 
     description_snippet = raw.description[:300].lower()
-    strong_phrases = {"fully remote", "100% remote", "remote-first", "remote first", "work from anywhere"}
+    strong_phrases = {
+        "fully remote",
+        "100% remote",
+        "remote-first",
+        "remote first",
+        "work from anywhere",
+    }
     return any(kw in description_snippet for kw in strong_phrases)
 
 
@@ -154,7 +157,10 @@ def matches_target_locations(
     for restriction in geo_restrictions:
         if re.search(r'\b' + re.escape(restriction) + r'\b', location_and_title):
             # Block unless this specific restriction was explicitly allowed by the user
-            allowed = any(restriction == loc.lower() or restriction in loc.lower() for loc in locations_ok)
+            allowed = any(
+                restriction == loc.lower() or restriction in loc.lower()
+                for loc in locations_ok
+            )
             if not allowed:
                 return False
 
@@ -163,15 +169,12 @@ def matches_target_locations(
     for loc in locations_ok:
         if loc.lower() != "remote" and loc.lower() in location_and_title:
             has_india = True
-            
+
     if has_india:
         return True
 
     # 3. If it's remote, allow it only because it survived the strict blocklist above
-    if job.remote:
-        return True
-
-    return False
+    return bool(job.remote)
 
 
 # ──────────────────────────────────────────────────────────────────────────────

@@ -1,8 +1,11 @@
 import asyncio
 from pathlib import Path
-from playwright.async_api import async_playwright, Browser, BrowserContext, Page
+
+from playwright.async_api import Browser, BrowserContext, Page, async_playwright
+
 from core.config import get_settings
 from core.logger import logger
+
 
 class BrowserAgent:
     def __init__(self):
@@ -30,12 +33,24 @@ class BrowserAgent:
         else:
             self.browser = await self.playwright.webkit.launch(**launch_opts)
             
+        ua = (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/122.0.0.0 Safari/537.36"
+        )
         self.context = await self.browser.new_context(
-            viewport={"width": self.settings.browser.viewport_width, "height": self.settings.browser.viewport_height},
-            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+            viewport={
+                "width": self.settings.browser.viewport_width,
+                "height": self.settings.browser.viewport_height,
+            },
+            user_agent=ua,
         )
         self.page = await self.context.new_page()
-        logger.info(f"Browser Agent started (headless={headless}, engine={browser_type})")
+        logger.info(
+            "Browser Agent started (headless={}, engine={})",
+            headless,
+            browser_type,
+        )
         
     async def close(self):
         if self.context:
@@ -49,11 +64,15 @@ class BrowserAgent:
     async def navigate(self, url: str) -> bool:
         logger.info(f"Navigating to {url}")
         try:
-            await self.page.goto(url, wait_until="domcontentloaded", timeout=self.settings.browser.timeout * 1000)
-            await asyncio.sleep(2) # Allow React/SPA to hydrate
+            await self.page.goto(
+                url,
+                wait_until="domcontentloaded",
+                timeout=self.settings.browser.timeout * 1000,
+            )
+            await asyncio.sleep(2)  # Allow React/SPA to hydrate
             return True
         except Exception as e:
-            logger.error(f"Failed to navigate to {url}: {e}")
+            logger.error("Failed to navigate to {}: {}", url, e)
             return False
             
     async def take_screenshot(self, job_id: str, step_name: str) -> str:

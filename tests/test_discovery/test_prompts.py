@@ -2,7 +2,6 @@
 tests/test_discovery/test_prompts.py — Unit tests for LLM prompt utilities.
 """
 
-import pytest
 
 from llm.prompts import keyword_pre_score
 

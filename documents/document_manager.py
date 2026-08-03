@@ -12,8 +12,7 @@ Currently supports: resume, cover_letter, certificate, transcript, portfolio
 
 from __future__ import annotations
 
-import mimetypes
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
@@ -41,7 +40,8 @@ class Document:
     is_default: bool = False
 
     def __str__(self) -> str:
-        return f"Document({self.type.value}, {self.filename}, {'default' if self.is_default else 'alt'})"
+        kind = "default" if self.is_default else "alt"
+        return f"Document({self.type.value}, {self.filename}, {kind})"
 
 
 class DocumentManager:

@@ -9,7 +9,8 @@ Returns all published job postings for a company.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import contextlib
+from datetime import UTC, datetime
 
 import httpx
 
@@ -74,7 +75,11 @@ class LeverAPISource(JobSource):
     def _parse_posting(self, data: dict, slug: str) -> RawJob:
         # Lever's location is nested
         categories = data.get("categories", {})
-        location = categories.get("location", "") or categories.get("allLocations", [""])[0] if isinstance(categories.get("allLocations"), list) else ""
+        all_locations = categories.get("allLocations")
+        if isinstance(all_locations, list) and all_locations:
+            location = categories.get("location") or all_locations[0]
+        else:
+            location = categories.get("location", "")
 
         # Remote detection from commitment and location
         commitment = categories.get("commitment", "").lower()
@@ -84,12 +89,8 @@ class LeverAPISource(JobSource):
         posted_at = None
         created_at_ms = data.get("createdAt")
         if created_at_ms:
-            try:
-                posted_at = datetime.fromtimestamp(
-                    created_at_ms / 1000, tz=timezone.utc
-                )
-            except (ValueError, OSError):
-                pass
+            with contextlib.suppress(ValueError, OSError):
+                posted_at = datetime.fromtimestamp(created_at_ms / 1000, tz=UTC)
 
         # Build description from Lever's list and description fields
         description_parts = []

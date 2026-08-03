@@ -4,17 +4,21 @@ api/routes/documents.py — Document management endpoints.
 
 from __future__ import annotations
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends
 
 from api.schemas import DocumentInfo, DocumentsResponse
 from core.config import Settings, settings_dep
-from documents.document_manager import DocumentManager, DocumentType
+from documents.document_manager import DocumentManager
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
+SettingsDep = Annotated[Settings, Depends(settings_dep)]
+
 
 @router.get("", response_model=DocumentsResponse)
-async def list_documents(settings: Settings = Depends(settings_dep)):
+async def list_documents(settings: SettingsDep):
     """List all indexed documents."""
     manager = DocumentManager(
         documents_dir=settings.storage.documents_dir,
@@ -34,7 +38,7 @@ async def list_documents(settings: Settings = Depends(settings_dep)):
 
 
 @router.post("/refresh")
-async def refresh_documents(settings: Settings = Depends(settings_dep)):
+async def refresh_documents(settings: SettingsDep):
     """Re-scan the documents directory."""
     manager = DocumentManager(
         documents_dir=settings.storage.documents_dir,

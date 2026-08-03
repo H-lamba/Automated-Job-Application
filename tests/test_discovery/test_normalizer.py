@@ -2,9 +2,7 @@
 tests/test_discovery/test_normalizer.py — Unit tests for the job normalizer.
 """
 
-import pytest
 
-from discovery.base_source import RawJob
 from discovery.normalizer import (
     JobNormalizer,
     compute_url_hash,

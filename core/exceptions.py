@@ -7,7 +7,6 @@ structured metadata so callers can make decisions without parsing strings.
 
 from __future__ import annotations
 
-
 # ──────────────────────────────────────────────────────────────────────────────
 # Base
 # ──────────────────────────────────────────────────────────────────────────────

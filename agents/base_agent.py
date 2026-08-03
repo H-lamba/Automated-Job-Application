@@ -17,11 +17,10 @@ from __future__ import annotations
 import asyncio
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from core.logger import logger
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Data classes used by the loop
@@ -32,7 +31,7 @@ from core.logger import logger
 class Observation:
     """What the agent perceives about the current state of the world."""
     data: dict[str, Any] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     source: str = ""
 
     def __str__(self) -> str:

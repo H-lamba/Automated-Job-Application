@@ -5,10 +5,11 @@ import sys
 # Ensure project root is in PYTHONPATH
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from core.logger import logger, setup_logging
 from agents.application_agent import ApplicationAgent
 from core.config import get_settings
 from core.database import init_db
+from core.logger import logger, setup_logging
+
 
 async def main():
     settings = get_settings()

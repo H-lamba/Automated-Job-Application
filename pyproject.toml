@@ -75,6 +75,13 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+# UP042 (str+Enum) is the deliberate FastAPI/Pydantic string-enum pattern.
+# E501 is allowed in prompts because long prompt text should remain readable.
+ignore = ["UP042"]
+
+[tool.ruff.lint.per-file-ignores]
+"llm/prompts.py" = ["E501"]
+"tests/*" = ["E501", "B011"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -83,6 +90,11 @@ log_cli = true
 log_cli_level = "INFO"
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 strict = false
 ignore_missing_imports = true
+exclude = [
+    "data/",
+    ".venv/",
+    "alembic/versions/",
+]

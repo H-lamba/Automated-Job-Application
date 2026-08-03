@@ -174,7 +174,6 @@ class UserProfile(BaseModel):
     def years_of_experience(self) -> float:
         """Approximate total years of professional experience."""
         from datetime import date
-        import re
 
         total_months = 0
         for exp in self.experience:

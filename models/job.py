@@ -16,7 +16,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base
 
-
 # ──────────────────────────────────────────────────────────────────────────────
 # Enumerations
 # ──────────────────────────────────────────────────────────────────────────────
@@ -132,4 +131,7 @@ class JobListing(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<JobListing id={self.id} title='{self.title}' company='{self.company}' score={self.relevance_score:.1f}>"
+        return (
+            f"<JobListing id={self.id} title='{self.title}' "
+            f"company='{self.company}' score={self.relevance_score:.1f}>"
+        )

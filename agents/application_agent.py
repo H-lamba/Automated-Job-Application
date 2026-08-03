@@ -1,19 +1,20 @@
 import asyncio
+from profile.loader import load_profile
+
 from sqlalchemy import select
 
-from core.logger import logger
-from core.database import get_session
-from core.config import get_settings
-from core.exceptions import DocumentNotFoundError
-from models.job import JobListing
-from browser.browser_agent import BrowserAgent
-from vision.vision_module import VisionModule
-from profile.loader import load_profile
-from llm.client import OllamaClient
 from agents.tailoring_agent import TailoringAgent
+from browser.browser_agent import BrowserAgent
+from core.config import get_settings
+from core.database import get_session
+from core.exceptions import DocumentNotFoundError
+from core.logger import logger
 from documents.document_manager import DocumentManager
-from vision.form_extractor import FormExtractor
 from documents.fabrication_store import FabricationStore
+from llm.client import OllamaClient
+from models.job import JobListing
+from vision.form_extractor import FormExtractor
+from vision.vision_module import VisionModule
 
 
 class ApplicationAgent:
@@ -101,7 +102,11 @@ class ApplicationAgent:
         form = await self._fill_form_with_llm(screenshot_path, job)
 
         if form is None or form.page_type not in ("form", "upload"):
-            logger.warning(f"Page does not appear to be an application form (page_type={getattr(form, 'page_type', None)!r}).")
+            logger.warning(
+                "Page does not appear to be an application form "
+                "(page_type={!r}).",
+                getattr(form, "page_type", None),
+            )
             if not self.settings.application.dry_run:
                 job.status = 'failed'
                 await db.commit()
@@ -109,7 +114,7 @@ class ApplicationAgent:
 
         await self._upload_documents(job, cover_letter_path)
 
-        screenshot_path_filled = await self.browser.take_screenshot(job.id, "2_form_filled")
+        await self.browser.take_screenshot(job.id, "2_form_filled")
 
         # ── Fabrication review gate ──────────────────────
         if not self._passes_fabrication_review(job):
@@ -164,7 +169,8 @@ class ApplicationAgent:
         js_script = """
         () => {
             const inputs = [];
-            document.querySelectorAll('input:not([type="hidden"]):not([type="file"]), textarea, select').forEach(el => {
+            const visibleInputs = 'input:not([type="hidden"]):not([type="file"])';
+            document.querySelectorAll(`${visibleInputs}, textarea, select`).forEach(el => {
                 let label = '';
                 if (el.id) {
                     const l = document.querySelector(`label[for="${el.id}"]`);
@@ -276,10 +282,15 @@ class ApplicationAgent:
                 # input for the resume (no resume-specific name/id).
                 generic_input = page.locator("input[type='file']").first
                 if await generic_input.count() > 0:
-                    logger.info(f"Uploading resume via generic file input: {resume_doc.filename}")
+                    logger.info(
+                        "Uploading resume via generic file input: {}",
+                        resume_doc.filename,
+                    )
                     await generic_input.set_input_files(str(resume_doc.path))
                 else:
-                    logger.warning("No file input found for resume upload — form may need manual review.")
+                    logger.warning(
+                        "No file input found for resume upload — manual review may be needed.",
+                    )
 
         # ── Cover letter ─────────────────────────────────────────────────
         if cover_letter_path:

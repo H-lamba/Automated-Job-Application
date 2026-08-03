@@ -11,16 +11,16 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from profile.loader import load_profile
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
+from agents.discovery_agent import DiscoveryAgent
 from core.config import get_settings
-from core.database import init_db, get_session
+from core.database import get_session, init_db
 from core.logger import logger, setup_logging
 from llm.client import OllamaClient
-from models.job import JobListing, JobStatus
-from profile.loader import load_profile
-from agents.discovery_agent import DiscoveryAgent
+from models.job import JobListing
 
 
 async def main() -> None:
@@ -101,7 +101,10 @@ async def main() -> None:
     else:
         logger.info("")
         logger.info("   No jobs above threshold yet — scoring more companies will help.")
-        logger.info("   (The current run only fetched Anthropic jobs; most were non-engineering roles.)")
+        logger.info(
+            "   (The current run only fetched Anthropic jobs; "
+            "most were non-engineering roles.)",
+        )
 
 
 if __name__ == "__main__":

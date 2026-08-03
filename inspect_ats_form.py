@@ -105,7 +105,6 @@ async def inspect(url: str) -> None:
         print(f"\nFull-page screenshot saved to: {screenshot_path}")
         print("(Open it and visually compare against the element list above.)")
 
-        input("\nPress Enter to close the browser...")
         await browser.close()
 
 

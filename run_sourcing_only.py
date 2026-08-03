@@ -24,6 +24,7 @@ import httpx
 from core.config import get_settings
 from core.logger import logger, setup_logging
 from discovery.ashby_api import AshbyAPISource
+from discovery.base_source import JobSource, RawJob
 from discovery.greenhouse_api import GreenhouseAPISource
 from discovery.lever_api import LeverAPISource
 
@@ -39,7 +40,7 @@ async def main(source_filter: str | None, out_path: str | None) -> None:
         follow_redirects=True,
     )
 
-    sources = []
+    sources: list[JobSource] = []
     try:
         if cfg.greenhouse_companies and source_filter in (None, "greenhouse"):
             sources.append(GreenhouseAPISource(cfg.greenhouse_companies, http_client))
@@ -55,9 +56,9 @@ async def main(source_filter: str | None, out_path: str | None) -> None:
         fetch_tasks = [s.fetch() for s in sources]
         results = await asyncio.gather(*fetch_tasks, return_exceptions=True)
 
-        all_jobs = []
-        for source, result in zip(sources, results):
-            if isinstance(result, Exception):
+        all_jobs: list[RawJob] = []
+        for source, result in zip(sources, results, strict=True):
+            if isinstance(result, BaseException):
                 logger.error("Source [{}] raised: {}", source.name, result)
                 continue
             logger.info("Source [{}] — {} jobs", source.name, len(result))

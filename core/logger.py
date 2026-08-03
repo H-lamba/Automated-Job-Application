@@ -25,7 +25,7 @@ logger.remove()
 __all__ = ["logger", "setup_logging"]
 
 
-def setup_logging(settings: "Settings") -> None:
+def setup_logging(settings: Settings) -> None:
     """
     Configure Loguru sinks based on application settings.
 
